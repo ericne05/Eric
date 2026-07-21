@@ -13,6 +13,7 @@ Design decisions (see Decision-Log.md):
 
 from core.events import Event, EventBus
 from core.kernel.lifecycle import SystemState
+from core.logger import ILogger, setup_logger
 
 
 class Kernel:
@@ -37,7 +38,7 @@ class Kernel:
 
         # Service references — populated during boot, used during shutdown.
         self._event_bus: EventBus | None = None
-        self._logger = None
+        self._logger: ILogger | None = None
         self._container = None
         self._service_registry = None
         self._plugin_loader = None
@@ -58,6 +59,11 @@ class Kernel:
     def event_bus(self) -> EventBus | None:
         """Loaded EventBus instance."""
         return self._event_bus
+
+    @property
+    def logger(self) -> ILogger | None:
+        """Loaded ILogger instance."""
+        return self._logger
 
     # ── Public lifecycle methods ─────────────────────────
 
@@ -105,14 +111,15 @@ class Kernel:
         self._shutdown_logger()
 
         self._set_state(SystemState.STOPPED)
-        # Always print — logger may already be gone.
         print("[Kernel] System stopped.")
 
     # ── Private boot steps ───────────────────────────────
 
     def _init_logger(self) -> None:
         """Sprint 3: Initialize Logger from configs/logging.yaml."""
-        self._log("[Kernel] Initializing Logger... (TODO)")
+        logging_cfg = self._config.get("logging", {})
+        self._logger = setup_logger(logging_cfg)
+        self._log("[Kernel] Logger initialized.")
 
     def _init_event_bus(self) -> None:
         """Sprint 2: Initialize async Event Bus."""
@@ -152,7 +159,10 @@ class Kernel:
             self._event_bus = None
 
     def _shutdown_logger(self) -> None:
-        self._log("[Kernel] Shutting down Logger... (TODO)")
+        if self._logger:
+            self._log("[Kernel] Shutting down Logger...")
+            self._logger.shutdown()
+            self._logger = None
 
     # ── Internal helpers ─────────────────────────────────
 
