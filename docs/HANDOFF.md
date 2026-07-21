@@ -2,6 +2,7 @@
 
 > **Version:** Sprint 3 Completed  
 > **Status:** Active Development (Phase 1 — Core Runtime)  
+> **Activation Trigger Phrase:** `khởi động Eric`
 
 ---
 
