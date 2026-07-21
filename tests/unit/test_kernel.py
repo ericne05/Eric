@@ -50,3 +50,36 @@ class TestKernelConfig:
         kernel = Kernel(config=cfg)
         kernel.boot()
         assert kernel.config["app"]["name"] == "Eric"
+
+
+class TestKernelEventBus:
+    """Verify Kernel integrates with EventBus correctly."""
+
+    def test_event_bus_initialized_on_boot(self):
+        kernel = Kernel(config={})
+        assert kernel.event_bus is None
+        kernel.boot()
+        assert kernel.event_bus is not None
+
+    def test_boot_emits_system_ready_event(self):
+        kernel = Kernel(config={})
+        kernel.boot()
+        assert kernel.event_bus is not None
+        events = [e for e in kernel.event_bus.history if e.name == "system.ready"]
+        assert len(events) == 1
+        assert events[0].source == "core.kernel"
+
+    def test_shutdown_emits_system_shutdown_event(self):
+        kernel = Kernel(config={})
+        kernel.boot()
+
+        published_events: list[str] = []
+        if kernel.event_bus:
+            kernel.event_bus.subscribe(
+                "system.shutdown", lambda e: published_events.append(e.name)
+            )
+
+        kernel.shutdown()
+        assert "system.shutdown" in published_events
+        assert kernel.event_bus is None
+

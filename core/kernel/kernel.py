@@ -11,6 +11,7 @@ Design decisions (see Decision-Log.md):
 - Uses print() as fallback until Logger module is implemented.
 """
 
+from core.events import Event, EventBus
 from core.kernel.lifecycle import SystemState
 
 
@@ -35,8 +36,7 @@ class Kernel:
         self._state = SystemState.CREATED
 
         # Service references — populated during boot, used during shutdown.
-        # Each will be replaced by a real instance in future Sprints.
-        self._event_bus = None
+        self._event_bus: EventBus | None = None
         self._logger = None
         self._container = None
         self._service_registry = None
@@ -53,6 +53,11 @@ class Kernel:
     def config(self) -> dict:
         """Loaded system configuration."""
         return self._config
+
+    @property
+    def event_bus(self) -> EventBus | None:
+        """Loaded EventBus instance."""
+        return self._event_bus
 
     # ── Public lifecycle methods ─────────────────────────
 
@@ -79,6 +84,14 @@ class Kernel:
         self._set_state(SystemState.READY)
         self._log("[Kernel] All subsystems initialized. System is ready.")
 
+        if self._event_bus:
+            ready_event = Event.create(
+                name="system.ready",
+                source="core.kernel",
+                payload={"state": self._state.name},
+            )
+            self._event_bus.publish_sync(ready_event)
+
     def shutdown(self) -> None:
         """
         Gracefully shut down the system in reverse boot order.
@@ -95,26 +108,27 @@ class Kernel:
         # Always print — logger may already be gone.
         print("[Kernel] System stopped.")
 
-    # ── Private boot steps (TODO: future Sprints) ────────
+    # ── Private boot steps ───────────────────────────────
 
     def _init_logger(self) -> None:
-        """Sprint 2: Initialize Logger from configs/logging.yaml."""
+        """Sprint 3: Initialize Logger from configs/logging.yaml."""
         self._log("[Kernel] Initializing Logger... (TODO)")
 
     def _init_event_bus(self) -> None:
         """Sprint 2: Initialize async Event Bus."""
-        self._log("[Kernel] Initializing Event Bus... (TODO)")
+        self._log("[Kernel] Initializing Event Bus...")
+        self._event_bus = EventBus()
 
     def _init_container(self) -> None:
-        """Sprint 2: Initialize DI Container and register base services."""
+        """Sprint 5: Initialize DI Container and register base services."""
         self._log("[Kernel] Initializing DI Container... (TODO)")
 
     def _load_plugins(self) -> None:
-        """Sprint 2: Scan plugins/ and load enabled plugins."""
+        """Sprint 7: Scan plugins/ and load enabled plugins."""
         self._log("[Kernel] Loading Plugins... (TODO)")
 
     def _register_services(self) -> None:
-        """Sprint 2: Register tools and agents into Service Registry."""
+        """Sprint 6: Register tools and agents into Service Registry."""
         self._log("[Kernel] Registering Services... (TODO)")
 
     # ── Private shutdown steps ───────────────────────────
@@ -126,7 +140,16 @@ class Kernel:
         self._log("[Kernel] Shutting down Services... (TODO)")
 
     def _shutdown_event_bus(self) -> None:
-        self._log("[Kernel] Shutting down Event Bus... (TODO)")
+        if self._event_bus:
+            self._log("[Kernel] Shutting down Event Bus...")
+            shutdown_event = Event.create(
+                name="system.shutdown",
+                source="core.kernel",
+                payload={"state": self._state.name},
+            )
+            self._event_bus.publish_sync(shutdown_event)
+            self._event_bus.shutdown()
+            self._event_bus = None
 
     def _shutdown_logger(self) -> None:
         self._log("[Kernel] Shutting down Logger... (TODO)")
