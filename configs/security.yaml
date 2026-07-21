@@ -1,0 +1,25 @@
+# Cấu hình Bảo mật và Quyền hạn (Security & Permissions)
+security:
+  # Cấu hình Sandbox thực thi lệnh
+  sandbox:
+    enabled: true
+    restricted_users: []
+    max_memory_mb: 512
+    max_cpu_percent: 50
+
+  # Lọc thông tin nhạy cảm (PII & Secret Redaction)
+  redaction:
+    enabled: true
+    patterns:
+      - '(?i)api_key'
+      - '(?i)secret'
+      - '(?i)password'
+      - '(?i)bearer\s+[a-zA-Z0-9_\-\.]+'
+      - '\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b' # Email
+
+  # Cơ chế xác nhận từ người dùng (User Confirmation Gates)
+  permission_gates:
+    confirm_file_deletion: true
+    confirm_unsafe_terminal_command: true
+    confirm_external_network_request: false
+    confirm_executable_run: true

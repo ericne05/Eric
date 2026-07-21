@@ -1,0 +1,45 @@
+# Cấu hình hệ thống Ghi nhật ký (Logging Configuration)
+logging:
+  version: 1
+  disable_existing_loggers: false
+
+  formatters:
+    standard:
+      format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    colored:
+      format: "%(log_color)s%(asctime)s [%(levelname)s] %(name)s: %(message)s%(reset)s"
+
+  handlers:
+    console:
+      class: "logging.StreamHandler"
+      level: "DEBUG"
+      formatter: "colored"
+      stream: "ext://sys.stdout"
+
+    file:
+      class: "logging.handlers.RotatingFileHandler"
+      level: "INFO"
+      formatter: "standard"
+      filename: "./storage/logs/eric.log"
+      maxBytes: 10485760 # 10MB
+      backupCount: 5
+      encoding: "utf8"
+
+  # Cấu hình cụ thể cho từng mô-đun
+  loggers:
+    core.brain:
+      level: "DEBUG"
+      handlers: ["console", "file"]
+      propagate: false
+    core.dispatcher:
+      level: "INFO"
+      handlers: ["console", "file"]
+      propagate: false
+    tools.browser:
+      level: "DEBUG"
+      handlers: ["console", "file"]
+      propagate: false
+    plugins:
+      level: "WARNING"
+      handlers: ["console", "file"]
+      propagate: false

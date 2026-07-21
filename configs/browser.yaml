@@ -1,0 +1,27 @@
+# Cấu hình chi tiết cho Browser Agent (WebAgent)
+browser:
+  provider: "playwright" # playwright, selenium, puppeteer
+  executable_path: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" # Tự động phát hiện nếu trống
+  user_data_dir: "./storage/cache/browser_profile"
+
+  # Cấu hình Viewport và Hiển thị
+  viewport:
+    width: 1280
+    height: 800
+  device_scale_factor: 1.0
+  is_mobile: false
+
+  # Cấu hình Mạng và Cookies
+  network:
+    timeout_ms: 30000
+    ignore_https_errors: false
+    proxy:
+      enabled: false
+      server: "http://myproxy.com:8080"
+      bypass: "localhost,127.0.0.1"
+
+  # Cấu hình Bảo mật và Tải xuống
+  download:
+    enabled: true
+    path: "./storage/downloads"
+    max_size_mb: 50

@@ -1,0 +1,30 @@
+# Cấu hình bộ lên lịch và tác vụ chạy nền (Scheduler Configuration)
+scheduler:
+  # Cấu hình lõi bộ lập lịch
+  core:
+    max_workers: 4
+    timezone: "Asia/Ho_Chi_Minh"
+
+  # Danh sách tác vụ định kỳ (Cron/Interval Tasks)
+  tasks:
+    # Hợp nhất bộ nhớ ngắn hạn thành dài hạn
+    memory_consolidation:
+      enabled: true
+      expression: "0 2 * * *" # Chạy vào lúc 2 giờ sáng hàng ngày
+      timeout_seconds: 1800
+
+    # Dọn dẹp logs và dữ liệu cache cũ
+    cache_cleanup:
+      enabled: true
+      expression: "0 0 * * 0" # Chạy vào lúc 0 giờ Chủ nhật hàng tuần
+      config:
+        max_log_age_days: 30
+        max_cache_size_mb: 1024
+
+    # Tự động sao lưu cấu hình và cơ sở dữ liệu
+    auto_backup:
+      enabled: false
+      expression: "0 4 * * *" # Chạy vào 4 giờ sáng hàng ngày
+      config:
+        backup_dir: "./storage/database/backups"
+        retain_backups_count: 7

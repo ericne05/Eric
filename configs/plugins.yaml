@@ -1,0 +1,36 @@
+# Cấu hình danh sách và kích hoạt Plugins (Plugin System Configuration)
+plugins:
+  # Cài đặt chung cho hệ thống tải plugin
+  loader:
+    auto_load: true
+    plugin_dir: "./plugins"
+    allow_unverified_plugins: false
+
+  # Đăng ký các plugin cụ thể
+  registry:
+    browser:
+      enabled: true
+      priority: 1
+      config:
+        default_search_engine: "google"
+
+    discord:
+      enabled: false
+      priority: 10
+      config:
+        bot_token: "${DISCORD_BOT_TOKEN}"
+        channels: []
+
+    github:
+      enabled: false
+      priority: 5
+      config:
+        personal_access_token: "${GITHUB_TOKEN}"
+        allowed_repos: []
+
+    spotify:
+      enabled: false
+      priority: 12
+      config:
+        client_id: "${SPOTIFY_CLIENT_ID}"
+        client_secret: "${SPOTIFY_CLIENT_SECRET}"

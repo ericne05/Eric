@@ -1,0 +1,38 @@
+# Đăng ký và Cấu hình các Agent trong hệ thống
+agents:
+  browser:
+    enabled: true
+    module_path: "tools/browser-agent"
+    max_tabs: 10
+    headless: false
+    sandbox: true
+
+  file:
+    enabled: true
+    module_path: "tools/file-agent"
+    allowed_directories:
+      - "D:\\Projects"
+      - "C:\\Users\\Public"
+    blocked_patterns:
+      - "*.sys"
+      - "*.dll"
+      - "Windows"
+
+  terminal:
+    enabled: true
+    module_path: "tools/terminal-agent"
+    shell: "powershell" # cmd, powershell, bash
+    timeout_seconds: 60
+    unsafe_commands_block: true
+
+  vscode:
+    enabled: false
+    module_path: "tools/vscode-agent"
+    port: 3000
+
+  database:
+    enabled: true
+    module_path: "tools/database-agent"
+    allowed_adapters:
+      - "sqlite"
+      - "postgresql"

@@ -1,0 +1,17 @@
+# Cấu hình hệ thống âm thanh, giọng nói và nhận dạng lời nói (Voice)
+voice:
+  # Nhận dạng giọng nói (Speech-to-Text - STT)
+  stt:
+    provider: "whisper-local" # whisper-local, whisper-api, google, system
+    model: "base" # tiny, base, small, medium for local whisper
+    language: "vi" # vi, en
+    device: "cpu" # cpu, cuda
+    api_key: "${OPENAI_API_KEY}" # Dành cho whisper-api
+
+  # Tổng hợp giọng nói (Text-to-Speech - TTS)
+  tts:
+    provider: "gtts" # gtts, edge-tts, openai, system
+    voice_name: "vi-VN-HoaiMyNeural" # edge-tts voice
+    rate: "+0%" # Tốc độ nói
+    volume: "+0%" # Âm lượng
+    pitch: "+0Hz" # Cao độ

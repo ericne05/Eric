@@ -1,0 +1,36 @@
+# Cấu hình Large Language Models (LLM) cho Brain
+llm:
+  default_provider: "gemini" # gemini, openai, anthropic, ollama
+  default_model: "gemini-2.5-flash"
+
+  providers:
+    gemini:
+      api_key: "${GEMINI_API_KEY}"
+      models:
+        fast: "gemini-2.5-flash"
+        advanced: "gemini-2.5-pro"
+      temperature: 0.2
+      max_tokens: 8192
+
+    openai:
+      api_key: "${OPENAI_API_KEY}"
+      models:
+        fast: "gpt-4o-mini"
+        advanced: "gpt-4o"
+      temperature: 0.2
+      max_tokens: 4096
+
+    anthropic:
+      api_key: "${ANTHROPIC_API_KEY}"
+      models:
+        fast: "claude-3-5-haiku"
+        advanced: "claude-3-5-sonnet"
+      temperature: 0.2
+      max_tokens: 4096
+
+    ollama:
+      base_url: "http://localhost:11434"
+      models:
+        fast: "llama3:8b"
+        advanced: "qwen2.5-coder:14b"
+      temperature: 0.2

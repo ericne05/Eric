@@ -1,0 +1,28 @@
+# Cấu hình hệ thống bộ nhớ cục bộ (Local Memory)
+memory:
+  # Bộ nhớ ngắn hạn (Short-term/Episodic Context)
+  short_term:
+    max_turns: 20
+    summary_trigger_turns: 15
+
+  # Bộ nhớ dài hạn (Long-term/Semantic Memory)
+  long_term:
+    provider: "sqlite"
+    db_name: "memory.db"
+    tables:
+      episodes: "user_episodes"
+      facts: "extracted_facts"
+      profile: "user_profile"
+
+  # Bộ nhớ Vector (Vector Search / Embeddings)
+  vector_store:
+    provider: "chromadb" # chromadb, faiss, qdrant
+    embedding_model: "text-embedding-004" # gemini text embedding or sentence-transformers
+    dimension: 768
+    collection_name: "eric_memory_vectors"
+
+  # Cơ chế hợp nhất và lọc bộ nhớ (Consolidation)
+  consolidation:
+    enabled: true
+    interval_hours: 24
+    decay_rate: 0.1 # Tốc độ phai nhạt thông tin không quan trọng

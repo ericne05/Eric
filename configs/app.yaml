@@ -1,0 +1,18 @@
+# Cấu hình chung cho Eric Application
+app:
+  name: "Eric"
+  version: "0.1.0"
+  environment: "development" # development, staging, production
+
+# Cấu hình đường dẫn lưu trữ dữ liệu cục bộ
+storage:
+  base_path: "./storage"
+  database_path: "./storage/database/eric.db"
+  vector_path: "./storage/vector"
+  logs_path: "./storage/logs"
+
+# Cấu hình Logging
+logging:
+  level: "DEBUG" # DEBUG, INFO, WARNING, ERROR
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  to_file: true
