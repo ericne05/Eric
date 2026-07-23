@@ -78,34 +78,42 @@ class Kernel:
 
     def boot(self) -> None:
         """
-        Boot the system following System-Lifecycle sequence.
-
-        Order (Sprint 5 — Container-based):
-            1. Initialize DI Container & register modules
-            2. Resolve Logger from Container
-            3. Resolve EventBus from Container
-            4. Load Plugins
-            5. Register Services
-            6. Emit system.ready
+        Start the Kernel and boot all subsystems.
+        Transitions: CREATED -> BOOTING -> READY.
         """
+        if self._state != SystemState.CREATED:
+            raise StateTransitionError(f"Cannot boot from state {self._state.name}")
+
         self._set_state(SystemState.BOOTING)
 
-        self._init_container()
-        self._init_logger()
-        self._init_event_bus()
-        self._load_plugins()
-        self._register_services()
+        try:
+            # 1. Core Services & DI Container
+            self._init_container()
+            self._init_logger()
+            self._init_event_bus()
 
-        self._set_state(SystemState.READY)
-        self._log("[Kernel] All subsystems initialized. System is ready.")
+            # 2. Storage & Memory
+            self._init_memory()
 
-        if self._event_bus:
-            ready_event = Event.create(
-                name="system.ready",
-                source="core.kernel",
-                payload={"state": self._state.name},
+            # 3. Discover & Load Plugins
+            self._load_plugins()
+
+            # 4. Initialize Services (Including Plugins)
+            self._init_services()
+
+            self._set_state(SystemState.READY)
+            self._log("[Kernel] All subsystems initialized. System is ready.")
+
+            # Emit system.ready event
+            self._event_bus.publish_sync(
+                Event.create(name="system.ready", source="system", payload={"version": "0.6.0"})
             )
-            self._event_bus.publish_sync(ready_event)
+
+        except Exception as e:
+            self._set_state(SystemState.FAILED)
+            if self._logger:
+                self._logger.error(f"[Kernel] Boot failed: {e}", exc_info=True)
+            raise RuntimeError(f"Kernel boot failed: {e}") from e
 
     def shutdown(self) -> None:
         """
@@ -134,14 +142,23 @@ class Kernel:
         from core.events.module import EventBusModule
         from core.logger.module import LoggingModule
         from core.memory.module import MemoryModule
+        from core.plugins.module import PluginSystemModule
+        from core.agents.module import AgentSystemModule
 
         self._container = Container()
+        self._container.register_instance(Container, self._container)
 
         # Register modules — each subsystem registers itself
         ConfigModule(self._config).register(self._container)
         LoggingModule().register(self._container)
         EventBusModule().register(self._container)
         MemoryModule().register(self._container)
+        PluginSystemModule().register(self._container)
+        from core.tools.module import ToolSystemModule
+        ToolSystemModule().register(self._container)
+        from core.llm.module import LLMSystemModule
+        LLMSystemModule().register(self._container)
+        AgentSystemModule().register(self._container)
 
         self._log("[Kernel] DI Container initialized.")
 
@@ -155,13 +172,25 @@ class Kernel:
         self._log("[Kernel] Initializing Event Bus...")
         self._event_bus = self._container.resolve(EventBus)
 
+    def _init_memory(self) -> None:
+        """Sprint 6: Resolve MemoryService to force initialization."""
+        self._log("[Kernel] Initializing Memory Engine...")
+        from core.memory.interfaces import IMemoryService
+        self._container.resolve(IMemoryService)
+
     def _load_plugins(self) -> None:
         """Sprint 7: Scan plugins/ and load enabled plugins."""
-        self._log("[Kernel] Loading Plugins... (TODO)")
+        self._log("[Kernel] Discovering and Loading Plugins...")
+        from core.plugins.interfaces import IPluginManager
+        plugin_manager = self._container.resolve(IPluginManager)
+        plugin_manager.load_all()
 
-    def _register_services(self) -> None:
-        """Sprint 6: Register tools and agents into Service Registry."""
-        self._log("[Kernel] Registering Services... (TODO)")
+    def _init_services(self) -> None:
+        """Sprint 7: Initialize all loaded plugins and services."""
+        self._log("[Kernel] Initializing Plugins and Services...")
+        from core.plugins.interfaces import IPluginManager
+        plugin_manager = self._container.resolve(IPluginManager)
+        plugin_manager.initialize_all()
 
     # ── Private shutdown steps ───────────────────────────
 

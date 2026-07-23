@@ -17,3 +17,4 @@ class SystemState(Enum):
     RUNNING = auto()        # Main event loop active
     SHUTTING_DOWN = auto()  # Graceful shutdown in progress
     STOPPED = auto()        # All resources released, process can exit
+    FAILED = auto()         # System encountered an unrecoverable error
