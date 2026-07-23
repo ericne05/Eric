@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 import yaml
 
 from core.kernel.kernel import Kernel
+from core.config import ConfigLoader, SystemConfig
 
 
 # Project root — two levels up from this file (core/kernel/bootstrap.py)
@@ -42,61 +43,6 @@ def load_env(project_root: Path | None = None) -> None:
         print(f"[Bootstrap] Loaded .env from {env_path}")
     else:
         print("[Bootstrap] No .env file found, using system environment.")
-
-
-def load_configs(config_dir: Path | None = None) -> dict:
-    """
-    Load all YAML configuration files from a directory.
-
-    Args:
-        config_dir: Path to config directory.
-                    Defaults to PROJECT_ROOT / "configs".
-
-    Returns:
-        Dictionary keyed by config name (filename without .yaml),
-        values are parsed YAML content.
-    """
-    if config_dir is None:
-        config_dir = PROJECT_ROOT / "configs"
-
-    configs: dict = {}
-
-    if not config_dir.exists():
-        print(f"[Bootstrap] Warning: Config directory not found: {config_dir}")
-        return configs
-
-    for yaml_file in sorted(config_dir.glob("*.yaml")):
-        name = yaml_file.stem
-        try:
-            with open(yaml_file, "r", encoding="utf-8") as f:
-                data = yaml.safe_load(f)
-                configs[name] = data if data else {}
-        except yaml.YAMLError as e:
-            print(f"[Bootstrap] Error parsing {yaml_file.name}: {e}")
-        except OSError as e:
-            print(f"[Bootstrap] Error reading {yaml_file.name}: {e}")
-
-    loaded = ", ".join(configs.keys())
-    print(f"[Bootstrap] Loaded configs: {loaded}")
-
-    return configs
-
-
-def resolve_env_vars(obj):
-    """
-    Recursively resolve ${ENV_VAR} placeholders in config values
-    from the current environment.
-
-    Unresolved placeholders are left as-is.
-    """
-    if isinstance(obj, dict):
-        return {k: resolve_env_vars(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [resolve_env_vars(item) for item in obj]
-    if isinstance(obj, str) and obj.startswith("${") and obj.endswith("}"):
-        env_key = obj[2:-1]
-        return os.environ.get(env_key, obj)
-    return obj
 
 
 def bootstrap(
@@ -121,16 +67,15 @@ def bootstrap(
     # 1. Load environment variables
     load_env(project_root)
 
-    # 2. Load YAML configs
-    configs = load_configs(config_dir)
+    # 2. Load YAML configs via ConfigService pipeline
+    cfg_dir = config_dir or (project_root or PROJECT_ROOT) / "configs"
+    loader = ConfigLoader()
+    configs = loader.load_from_dir(cfg_dir)
 
-    # 3. Resolve ${ENV_VAR} placeholders
-    configs = resolve_env_vars(configs)
-
-    # 4. Create Kernel
+    # 3. Create Kernel
     kernel = Kernel(config=configs)
 
-    # 5. Boot
+    # 4. Boot
     kernel.boot()
 
     return kernel

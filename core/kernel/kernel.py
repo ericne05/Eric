@@ -8,12 +8,14 @@ Design decisions (see Decision-Log.md):
 - NOT a Singleton — instantiated by Bootstrap for testability.
 - Does NOT load .env or config — that is Bootstrap's responsibility.
 - Orchestrates boot/shutdown sequence per System-Lifecycle.md.
-- Uses print() as fallback until Logger module is implemented.
+- All services are resolved through the DI Container (Sprint 5).
 """
 
+from core.config import SystemConfig
+from core.di import Container
 from core.events import Event, EventBus
 from core.kernel.lifecycle import SystemState
-from core.logger import ILogger, setup_logger
+from core.logger import ILogger
 
 
 class Kernel:
@@ -24,16 +26,18 @@ class Kernel:
     the lifecycle of all subsystems.
     """
 
-    def __init__(self, config: dict) -> None:
+    def __init__(self, config: SystemConfig | dict) -> None:
         """
         Initialize Kernel with pre-loaded configuration.
 
         Args:
-            config: Dictionary of all loaded YAML configs.
-                    Keys are config filenames without extension
-                    (e.g., "app", "llm", "memory").
+            config: SystemConfig instance or dictionary.
         """
-        self._config = config
+        # Support dict fallback for tests that manually inject config dictionaries
+        if isinstance(config, dict):
+            self._config = SystemConfig.from_dict(config)
+        else:
+            self._config = config
         self._state = SystemState.CREATED
 
         # Service references — populated during boot, used during shutdown.
@@ -51,9 +55,14 @@ class Kernel:
         return self._state
 
     @property
-    def config(self) -> dict:
+    def config(self) -> SystemConfig:
         """Loaded system configuration."""
         return self._config
+
+    @property
+    def container(self) -> Container | None:
+        """DI Container instance."""
+        return self._container
 
     @property
     def event_bus(self) -> EventBus | None:
@@ -71,19 +80,19 @@ class Kernel:
         """
         Boot the system following System-Lifecycle sequence.
 
-        Order:
-            1. Initialize Logger
-            2. Initialize Event Bus
-            3. Initialize DI Container
+        Order (Sprint 5 — Container-based):
+            1. Initialize DI Container & register modules
+            2. Resolve Logger from Container
+            3. Resolve EventBus from Container
             4. Load Plugins
             5. Register Services
             6. Emit system.ready
         """
         self._set_state(SystemState.BOOTING)
 
+        self._init_container()
         self._init_logger()
         self._init_event_bus()
-        self._init_container()
         self._load_plugins()
         self._register_services()
 
@@ -101,6 +110,9 @@ class Kernel:
     def shutdown(self) -> None:
         """
         Gracefully shut down the system in reverse boot order.
+
+        Container.dispose() handles lifecycle cleanup for all registered
+        singleton services that implement ILifecycleAware.
         """
         self._set_state(SystemState.SHUTTING_DOWN)
         self._log("[Kernel] Shutdown sequence started...")
@@ -108,6 +120,7 @@ class Kernel:
         self._unload_plugins()
         self._shutdown_services()
         self._shutdown_event_bus()
+        self._shutdown_container()
         self._shutdown_logger()
 
         self._set_state(SystemState.STOPPED)
@@ -115,20 +128,32 @@ class Kernel:
 
     # ── Private boot steps ───────────────────────────────
 
+    def _init_container(self) -> None:
+        """Sprint 5: Initialize DI Container and register core modules."""
+        from core.config.module import ConfigModule
+        from core.events.module import EventBusModule
+        from core.logger.module import LoggingModule
+        from core.memory.module import MemoryModule
+
+        self._container = Container()
+
+        # Register modules — each subsystem registers itself
+        ConfigModule(self._config).register(self._container)
+        LoggingModule().register(self._container)
+        EventBusModule().register(self._container)
+        MemoryModule().register(self._container)
+
+        self._log("[Kernel] DI Container initialized.")
+
     def _init_logger(self) -> None:
-        """Sprint 3: Initialize Logger from configs/logging.yaml."""
-        logging_cfg = self._config.get("logging", {})
-        self._logger = setup_logger(logging_cfg)
+        """Sprint 3: Resolve Logger from DI Container."""
+        self._logger = self._container.resolve(ILogger)
         self._log("[Kernel] Logger initialized.")
 
     def _init_event_bus(self) -> None:
-        """Sprint 2: Initialize async Event Bus."""
+        """Sprint 2: Resolve EventBus from DI Container."""
         self._log("[Kernel] Initializing Event Bus...")
-        self._event_bus = EventBus()
-
-    def _init_container(self) -> None:
-        """Sprint 5: Initialize DI Container and register base services."""
-        self._log("[Kernel] Initializing DI Container... (TODO)")
+        self._event_bus = self._container.resolve(EventBus)
 
     def _load_plugins(self) -> None:
         """Sprint 7: Scan plugins/ and load enabled plugins."""
@@ -157,6 +182,13 @@ class Kernel:
             self._event_bus.publish_sync(shutdown_event)
             self._event_bus.shutdown()
             self._event_bus = None
+
+    def _shutdown_container(self) -> None:
+        """Dispose all services managed by the DI Container."""
+        if self._container:
+            self._log("[Kernel] Disposing DI Container...")
+            self._container.dispose()
+            self._container = None
 
     def _shutdown_logger(self) -> None:
         if self._logger:

@@ -33,23 +33,27 @@ class TestKernelLifecycle:
         assert kernel.state == SystemState.STOPPED
 
 
+from core.config import SystemConfig
+
 class TestKernelConfig:
     """Verify Kernel stores and exposes config correctly."""
 
     def test_config_is_accessible(self):
         cfg = {"app": {"name": "Eric", "version": "0.1.0"}}
         kernel = Kernel(config=cfg)
-        assert kernel.config == cfg
+        assert isinstance(kernel.config, SystemConfig)
+        assert kernel.config.app.name == "Eric"
 
     def test_empty_config(self):
         kernel = Kernel(config={})
-        assert kernel.config == {}
+        assert isinstance(kernel.config, SystemConfig)
+        assert kernel.config.app.name == "Eric"  # Should use default
 
     def test_config_is_not_mutated_by_boot(self):
         cfg = {"app": {"name": "Eric"}}
         kernel = Kernel(config=cfg)
         kernel.boot()
-        assert kernel.config["app"]["name"] == "Eric"
+        assert kernel.config.app.name == "Eric"
 
 
 class TestKernelEventBus:

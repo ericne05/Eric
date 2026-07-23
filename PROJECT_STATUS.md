@@ -10,10 +10,10 @@
 | Tiêu chí | Trạng thái Hiện tại |
 |---|---|
 | **Phase Hiện Tại** | Phase 1 — Core Runtime |
-| **Sprint Đang Thực Hiện** | **Sprint 4 — Config Loader Nâng Cao** (Chuẩn bị triển khai) |
-| **Nhánh Git Đang Làm Việc** | `develop` |
+| **Sprint Đang Thực Hiện** | **Sprint 7 — Dynamic Plugin Loader** (Chuẩn bị triển khai) |
+| **Nhánh Git Đang Làm Việc** | `feature/sprint-6-memory-engine` |
 | **Python Version** | 3.14.6 (`.venv/`) |
-| **Tổng Số Unit Tests** | **39/39 PASSED** (`pytest tests/ -v`) |
+| **Tổng Số Unit Tests** | **105/105 PASSED** (`pytest tests/ -v`) |
 | **Test Coverage** | ≥90% |
 | **Nợ Kỹ Thuật (Tech Debt)** | 0 |
 | **Known Issues** | 0 |
@@ -26,10 +26,10 @@
 - [x] **Sprint 1 — Python Setup + Kernel Core** *(Hoàn thành: 17 tests)*
 - [x] **Sprint 2 — Event Bus System (ADR-004)** *(Hoàn thành: 34 tests)*
 - [x] **Sprint 3 — Enterprise Logger Module (ILogger)** *(Hoàn thành: 39 tests)*
-- [ ] **Sprint 4 — Config Loader Nâng Cao (Schemas & Type-safe Config)** *(TIẾP THEO)*
-- [ ] **Sprint 5 — Dependency Injection Container**
-- [ ] **Sprint 6 — Service Registry & Tool Registration**
-- [ ] **Sprint 7 — Dynamic Plugin Loader**
+- [x] **Sprint 4 — Config Loader Nâng Cao (Schemas & Type-safe Config)** *(Hoàn thành: 50 tests)*
+- [x] **Sprint 5 — Dependency Injection Container** *(Hoàn thành: 80 tests)*
+- [x] **Sprint 6 — Memory Engine** *(Hoàn thành: 105 tests)*
+- [ ] **Sprint 7 — Dynamic Plugin Loader** *(TIẾP THEO)*
 
 ---
 

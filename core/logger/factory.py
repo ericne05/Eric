@@ -35,14 +35,17 @@ class InterceptHandler(logging.Handler):
         )
 
 
-def setup_logger(config: dict) -> ILogger:
+from core.config.schemas import LoggingConfig
+
+
+def setup_logger(config: LoggingConfig | dict) -> ILogger:
     """
     Factory function to initialize and configure the logging subsystem.
 
     Redirects Python's standard `logging` to loguru and configures LoggerManager sinks.
 
     Args:
-        config: Logging configuration dictionary.
+        config: Logging configuration instance or dictionary.
 
     Returns:
         Configured ILogger instance.

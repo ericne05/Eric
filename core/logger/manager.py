@@ -33,12 +33,12 @@ class LoggerManager(ILogger):
     # ── Factory / Sink Setup ─────────────────────────────
 
     @classmethod
-    def configure(cls, config: dict) -> "LoggerManager":
+    def configure(cls, config: "LoggingConfig | dict") -> "LoggerManager":
         """
-        Configure loguru sinks according to configuration dictionary.
+        Configure loguru sinks according to configuration dictionary or LoggingConfig.
 
         Args:
-            config: Logging configuration dictionary (e.g. from configs/logging.yaml).
+            config: Logging configuration.
 
         Returns:
             Configured LoggerManager instance.
@@ -46,8 +46,11 @@ class LoggerManager(ILogger):
         # Reset existing loguru sinks
         _loguru_logger.remove()
 
-        logging_cfg = config.get("logging", config)
-        handlers_cfg = logging_cfg.get("handlers", {})
+        if isinstance(config, dict):
+            logging_cfg = config.get("logging", config)
+            handlers_cfg = logging_cfg.get("handlers", {})
+        else:
+            handlers_cfg = config.handlers
 
         # 1. Console Sink
         console_cfg = handlers_cfg.get("console", {})

@@ -8,9 +8,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+- Preparing Sprint 7 — Dynamic Plugin Loader.
 
-### Planned for Sprint 4
-- Config Loader module (`core/config/`) with Type-safe schemas and validation for 10 YAML files.
+---
+
+## [0.6.0] - 2026-07-24 (Sprint 6)
+
+### Added
+- Complete Memory Engine architecture at `core/memory/`.
+- `MemoryEntry` and `SearchResult` frozen dataclasses for immutable data transfer.
+- Type-safe Enums: `MemoryType`, `MemorySource`, `SourceTier`.
+- Interfaces for storage and embeddings: `IMemoryService`, `IVectorStore`, `IEmbeddingProvider`.
+- `ShortTermMemory`: In-memory circular buffer for recent conversational context.
+- `LongTermMemory`: SQLite-backed persistent store for facts, episodes, and profile.
+- `InMemoryVectorStore`: Local, dependency-free vector store using Python cosine similarity for dev/test.
+- `DeterministicEmbeddingProvider`: Reproducible SHA-256-based embeddings for stable testing.
+- `RecallEngine`: Multi-tier search engine that queries short-term, long-term, and vector stores, then merges and ranks results.
+- `MemoryService`: Unified facade for all memory operations, orchestrating the different tiers.
+- 25 new unit tests covering all memory components (`tests/unit/test_memory.py`).
+
+### Changed
+- `Kernel` now registers `MemoryModule` via DI Container during `_init_container()`.
+
+---
+
+## [0.5.0] - 2026-07-24 (Sprint 5)
+
+### Added
+- Custom DI Container (`core/di/`) with auto constructor injection via Python type hints.
+- Three lifetime strategies: `Singleton` (lazy), `Transient`, `Scoped`.
+- Interface-based registration (`ILogger` → `LoggerManager`).
+- Factory-based registration (`lambda c: ...`).
+- DSL shortcuts: `add_singleton()`, `add_transient()`, `add_scoped()`, `register_instance()`.
+- `ILifecycleAware` interface with `initialize()` / `dispose()` hooks.
+- `IDependencyModule` interface for modular subsystem registration.
+- Module registration co-located with each subsystem (`core/config/module.py`, `core/events/module.py`, `core/logger/module.py`).
+- `Scope` class for scoped service lifetimes (child container pattern).
+- Circular dependency detection with full resolution stack in error message.
+- Optional dependency support (`Type | None = None` → injects `None` if unregistered).
+- Primitive type skipping for constructor parameters with defaults.
+- 30 new unit tests for DI subsystem (`tests/unit/test_di.py`).
+
+### Changed
+- Kernel boot sequence now flows through Container: `Container → Logger → EventBus → Ready`.
+- `Kernel._init_container()` implemented (was `TODO`).
+- `Kernel.shutdown()` calls `container.dispose()` for lifecycle cleanup.
+- Logger and EventBus are now resolved from DI Container instead of direct instantiation.
+
+---
+
+## [0.4.0] - 2026-07-23 (Sprint 4)
+
+### Added
+- Advanced Config Loader System (Architecture 2.0) at `core/config/`.
+- `ConfigRegistry` for dynamic plugin schema registration.
+- 10 immutable `@dataclass(frozen=True)` configuration schemas.
+- `EnvResolver` with `${ENV_VAR:default}` syntax.
+- `ConfigService` pipeline: Parser → Resolver → Builder → Validator → Cache.
+- `YAMLParser` and `JSONParser` for multi-format support.
+- Custom exception hierarchy (`ConfigError`, `SchemaValidationError`, etc.).
+- 21 new unit tests (`tests/unit/test_config.py`).
+
+### Changed
+- `Kernel` and `Bootstrap` now use `SystemConfig` (dataclass) instead of raw dict.
+- `LoggerManager.configure()` accepts `LoggingConfig | dict`.
 
 ---
 
