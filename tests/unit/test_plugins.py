@@ -17,6 +17,7 @@ from core.plugins.exceptions import PluginDependencyError, PluginLoadError, Plug
 from core.plugins.interfaces import IPlugin, PluginContext
 from core.plugins.manager import PluginManager
 from core.plugins.models import PluginManifest
+from core.tools.registry import ToolRegistry
 
 
 # ── Mocks & Stubs ────────────────────────────────────────────────────────
@@ -106,8 +107,9 @@ class TestPluginManager:
         logger = MockLogger()
         event_bus = EventBus()
         container = Container()
+        tool_registry = ToolRegistry()
 
-        manager = PluginManager(config, logger, event_bus, container)
+        manager = PluginManager(config, logger, event_bus, container, tool_registry)
         # Force the plugin dir to our tmp_path
         manager._plugin_dir = plugins_dir
         

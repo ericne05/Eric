@@ -16,6 +16,9 @@ from core.config.schemas import SystemConfig
 from core.events.event_bus import EventBus
 from core.logger.interface import ILogger
 from core.memory.interfaces import IMemoryService
+from core.tools.executor import ToolExecutor
+from core.tools.registry import ToolRegistry
+from tests.unit.test_tools import MockPolicyEngine, MockTelemetry
 
 
 class MockLogger(ILogger):
@@ -76,7 +79,16 @@ class TestAgentRuntime:
         config = SystemConfig()
         memory = MockMemory()
         
-        runtime = AgentRuntime(registry, logger, event_bus, config, memory)
+        registry_t = ToolRegistry()
+        from core.tools.decorator import tool
+        @tool(namespace="dummy", name="search")
+        def dummy_search(context, query: str):
+            return "Video playing"
+        registry_t.register(dummy_search)
+        
+        executor = ToolExecutor(registry_t, MockPolicyEngine(), MockTelemetry())
+        
+        runtime = AgentRuntime(registry, logger, event_bus, config, memory, executor)
         return runtime, event_bus
 
     def test_submit_task_emits_event(self, setup_runtime):
@@ -101,8 +113,8 @@ class TestAgentRuntime:
         runtime.process_queue()
         
         assert task.state == TaskState.COMPLETED
-        # DummyAgent loops 2 times, each loop has Thought, Action, Observation. Total 6 steps.
-        assert len(task.steps) == 6
+        # DummyAgent loops 1 time, loop has Thought, Action, Observation. Total 3 steps.
+        assert len(task.steps) == 3
         assert task.steps[0].type == StepType.THOUGHT
         assert task.steps[1].type == StepType.ACTION
         assert task.steps[2].type == StepType.OBSERVATION

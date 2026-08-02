@@ -13,11 +13,35 @@ from core.tools.executor import ToolExecutor
 from core.tools.registry import ToolRegistry
 
 
-# Mock context
+# Mock classes
+class MockPolicyEngine:
+    def check_permission(self, context, tool_fqn):
+        from core.security.enums import PolicyDecision
+        return PolicyDecision.ALLOW
+        
+    def evaluate_action(self, tool, context):
+        from core.security.enums import PolicyDecision
+        class MockResult:
+            def __init__(self):
+                self.decision = PolicyDecision.ALLOW
+        return MockResult()
+
+class MockTelemetry:
+    def trace(self, name):
+        import contextlib
+        @contextlib.contextmanager
+        def dummy_context():
+            yield None
+        return dummy_context()
+        
+    def record_event(self, name: str, attributes: dict = None) -> None:
+        pass
+
 class MockContext:
     def __init__(self):
         self.task = Task(id="t1", goal="Test", agent_name="test")
         self.event_bus = EventBus()
+        self.trace_id = "trace-123"
         class MockLogger:
             def info(self, msg): pass
             def debug(self, msg): pass
@@ -66,7 +90,7 @@ def test_registry_conflict():
 def test_executor_sync_tool():
     registry = ToolRegistry()
     registry.register(sync_tool)
-    executor = ToolExecutor(registry)
+    executor = ToolExecutor(registry, MockPolicyEngine(), MockTelemetry())
     context = MockContext()
     
     result = asyncio.run(executor.execute_tool(context, "test.sync_tool", val=5))
@@ -77,7 +101,7 @@ def test_executor_sync_tool():
 def test_executor_timeout():
     registry = ToolRegistry()
     registry.register(async_tool)
-    executor = ToolExecutor(registry)
+    executor = ToolExecutor(registry, MockPolicyEngine(), MockTelemetry())
     context = MockContext()
     
     # Tool has 1s timeout, delay is 2s
@@ -89,7 +113,7 @@ def test_executor_timeout():
 def test_executor_streaming():
     registry = ToolRegistry()
     registry.register(stream_tool)
-    executor = ToolExecutor(registry)
+    executor = ToolExecutor(registry, MockPolicyEngine(), MockTelemetry())
     context = MockContext()
     
     result = asyncio.run(executor.execute_tool(context, "test.stream_tool"))

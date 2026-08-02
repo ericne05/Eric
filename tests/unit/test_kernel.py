@@ -71,7 +71,7 @@ class TestKernelEventBus:
         assert kernel.event_bus is not None
         events = [e for e in kernel.event_bus.history if e.name == "system.ready"]
         assert len(events) == 1
-        assert events[0].source == "core.kernel"
+        assert events[0].source == "system"
 
     def test_shutdown_emits_system_shutdown_event(self):
         kernel = Kernel(config={})
