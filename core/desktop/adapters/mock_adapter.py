@@ -2,7 +2,7 @@
 Mock Desktop Adapter Implementation (Updated for Sprint 12.5).
 """
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from core.desktop.enums import AdapterHealthState, DesktopState
 from core.desktop.interfaces import (
@@ -17,6 +17,8 @@ from core.desktop.interfaces import (
 from core.desktop.models import AdapterHealth, DesktopActionResult, RuntimeCapabilityRegistry, WindowInfo
 from core.events.event import Event
 from core.events.event_bus import EventBus
+from core.runtime.capability import CapabilityRegistry
+from core.runtime.interfaces import IRuntimeCapability
 
 
 class MockDesktopUI(IDesktopUI):
@@ -209,3 +211,21 @@ class MockDesktopAdapter(IDesktopRuntime):
 
     def check_health(self) -> AdapterHealth:
         return AdapterHealth(state=AdapterHealthState.HEALTHY)
+
+    # ── IRuntime compatibility (CapabilityNegotiator) ───────────────────
+
+    def get_runtime_capabilities(self) -> IRuntimeCapability:
+        return CapabilityRegistry({
+            "mouse": True,
+            "keyboard": True,
+            "window": True,
+            "screenshot": True,
+            "clipboard": True,
+            "notification": True,
+            "system_power": True,
+            "ocr": False,
+            "vision": False,
+        })
+
+    def get_health(self) -> Dict[str, Any]:
+        return {"state": self._state.value, "mouse_ok": True, "keyboard_ok": True}
