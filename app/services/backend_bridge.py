@@ -1,6 +1,7 @@
 """
 Backend Bridge Service.
 Bridges UI ViewModels to CognitiveCoordinator, GoalManager, Telemetry, and SessionManager.
+Hỗ trợ Tiếng Việt tự nhiên cho người dùng.
 """
 
 import asyncio
@@ -39,7 +40,7 @@ class BackendBridge:
         self._status_listeners.append(callback)
 
     def _notify_status(self, status: str) -> None:
-        self.log_activity(f"Status update: {status}")
+        self.log_activity(f"Cập nhật trạng thái: {status}")
         for cb in self._status_listeners:
             cb(status)
 
@@ -53,34 +54,46 @@ class BackendBridge:
             self._notification_center.notify(title, message, level=level)
 
     async def send_user_prompt(self, prompt: str) -> ChatMessage:
-        """Processes user prompt through full Backend Engine and updates UX status."""
+        """Processes user prompt through full Backend Engine and updates UX status in natural Vietnamese."""
         self._session_manager.add_message(prompt, sender="user")
 
-        self._notify_status("Thinking...")
+        prompt_clean = prompt.strip().lower()
+
+        # Xử lý các câu chào / giao tiếp Tiếng Việt
+        greetings = ("alo", "chao", "chào", "hello", "hi", "noi tieng viet di", "nói tiếng việt đi", "tieng viet")
+        if any(g in prompt_clean for g in greetings) and len(prompt_clean) < 25:
+            self._notify_status("Phản hồi...")
+            reply_text = (
+                "Chào bạn! Eric nghe đây. Tôi là Trợ lý AI cá nhân của bạn trên Windows.\n"
+                "Tôi đã sẵn sàng tự động hóa công việc Browser, Desktop và Vision giúp bạn!"
+            )
+            return self._session_manager.add_message(reply_text, sender="eric", status="completed")
+
+        self._notify_status("Đang suy nghĩ...")
 
         if not self._bootstrap.is_bootstrapped:
             await self._bootstrap.initialize()
 
-        self._notify_status("Searching Knowledge...")
+        self._notify_status("Đang truy vấn tri thức...")
         await asyncio.sleep(0.01)
 
-        self._notify_status("Planning...")
+        self._notify_status("Đang lập kế hoạch...")
         spec = GoalSpecification(description=prompt, goal_type=GoalType.MIXED)
         goal = await self._bootstrap.goal_manager.create_goal(prompt)
         ctx = SharedCognitiveContext(goal=goal)
 
-        self._notify_status("Executing...")
+        self._notify_status("Đang thực thi...")
         res = await self._bootstrap.coordinator.run_cognition_loop(ctx)
 
         if res.success:
-            self._notify_status("Completed")
-            self.push_notification("Goal Completed", f"Successfully finished: {prompt}", level="success")
-            reply_text = f"✓ Completed goal: '{prompt}'. Executed across registered runtimes."
+            self._notify_status("Hoàn thành")
+            self.push_notification("Mục tiêu hoàn thành", f"Đã thực thi thành công: {prompt}", level="success")
+            reply_text = f"✓ Đã hoàn thành mục tiêu: '{prompt}'. Đã thực thi qua các runtime."
             return self._session_manager.add_message(reply_text, sender="eric", status="completed")
         else:
-            self._notify_status("Failed")
-            self.push_notification("Goal Failed", res.error or "Execution error", level="error")
-            reply_text = f"❌ Execution failed: {res.error}"
+            self._notify_status("Thất bại")
+            self.push_notification("Mục tiêu thất bại", res.error or "Lỗi thực thi", level="error")
+            reply_text = f"❌ Thực thi thất bại: {res.error}"
             return self._session_manager.add_message(reply_text, sender="eric", status="failed")
 
     def get_runtime_health(self) -> Dict[str, str]:

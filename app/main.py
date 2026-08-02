@@ -85,18 +85,17 @@ async def main():
     client = EricDesktopClient()
     res = await client.launch()
 
-    print("\n" + "=" * 60)
-    print(" ERIC AI ASSISTANT v1.0 (Desktop Client)")
-    print(f" Status: ONLINE | Active Session: {res['active_session'][:8]}")
-    print(" Runtimes: Desktop [OK] | Vision [OK] | Browser [OK]")
-    print("=" * 60)
-    print(" Type your request below and press Enter (or type 'exit' / 'quit' to exit):\n")
+    print("\n" + "=" * 65)
+    print(" ERIC AI ASSISTANT v1.0 (Trợ Lý AI Windows)")
+    print(f" Trạng thái: ONLINE | Phiên làm việc: {res['active_session'][:8]}")
+    print(" Runtime: Desktop [Sẵn sàng] | Vision [Sẵn sàng] | Browser [Sẵn sàng]")
+    print("=" * 65)
+    print(" Gõ yêu cầu của bạn bên dưới và nhấn Enter (hoặc gõ 'exit' / 'quit' để thoát):\n")
 
     loop = asyncio.get_running_loop()
 
     try:
         while client.is_running:
-            # Interactive user prompt loop
             user_input = await loop.run_in_executor(None, input, "Eric > ")
             user_input = user_input.strip()
 
@@ -104,16 +103,16 @@ async def main():
                 continue
 
             if user_input.lower() in ("exit", "quit", "q"):
-                print("\nShutting down Eric AI Assistant...")
+                print("\nĐang tắt Trợ lý AI Eric...")
                 break
 
             reply = await client.send_prompt(user_input)
             print(f"\n{reply}\n")
     except (KeyboardInterrupt, EOFError):
-        print("\nExiting Eric AI Assistant...")
+        print("\nĐang thoát Trợ lý AI Eric...")
     finally:
         await client.shutdown()
-        print("Eric AI Assistant closed successfully.")
+        print("Trợ lý AI Eric đã đóng thành công.")
 
 
 if __name__ == "__main__":
