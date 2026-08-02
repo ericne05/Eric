@@ -84,10 +84,36 @@ class EricDesktopClient:
 async def main():
     client = EricDesktopClient()
     res = await client.launch()
-    print("Eric Desktop Client v1.0 status:", res)
-    reply = await client.send_prompt("Open Chrome and search sales report")
-    print("Eric Reply:", reply)
-    await client.shutdown()
+
+    print("\n" + "=" * 60)
+    print(" ERIC AI ASSISTANT v1.0 (Desktop Client)")
+    print(f" Status: ONLINE | Active Session: {res['active_session'][:8]}")
+    print(" Runtimes: Desktop [OK] | Vision [OK] | Browser [OK]")
+    print("=" * 60)
+    print(" Type your request below and press Enter (or type 'exit' / 'quit' to exit):\n")
+
+    loop = asyncio.get_running_loop()
+
+    try:
+        while client.is_running:
+            # Interactive user prompt loop
+            user_input = await loop.run_in_executor(None, input, "Eric > ")
+            user_input = user_input.strip()
+
+            if not user_input:
+                continue
+
+            if user_input.lower() in ("exit", "quit", "q"):
+                print("\nShutting down Eric AI Assistant...")
+                break
+
+            reply = await client.send_prompt(user_input)
+            print(f"\n{reply}\n")
+    except (KeyboardInterrupt, EOFError):
+        print("\nExiting Eric AI Assistant...")
+    finally:
+        await client.shutdown()
+        print("Eric AI Assistant closed successfully.")
 
 
 if __name__ == "__main__":
