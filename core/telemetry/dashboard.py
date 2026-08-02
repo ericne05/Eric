@@ -1,9 +1,9 @@
 """
-Telemetry Dashboard for Eric.
+Telemetry Dashboard for Eric (Sprint 14 Goal Integration).
 
 Collects metrics from EventBus and provides a real-time snapshot
 of system health: Queue Length, Planner Confidence, Runtime Health,
-Recovery Count, Action Duration, and Success Rate.
+Recovery Count, Action Duration, Success Rate, AND Goal Metrics.
 """
 
 import datetime
@@ -33,21 +33,24 @@ class DashboardSnapshot:
     timestamp: datetime.datetime
     queue_length: int = 0
     planner_confidence: float = 1.0
-    runtime_health: Dict[str, str] = field(default_factory=dict)  # runtime_name -> "healthy"/"degraded"/"critical"
+    runtime_health: Dict[str, str] = field(default_factory=dict)
     recovery_count: int = 0
     total_actions: int = 0
     successful_actions: int = 0
     failed_actions: int = 0
     avg_duration_ms: float = 0.0
     success_rate: float = 1.0
+    # Goal Metrics
+    total_goals: int = 0
+    active_goals: int = 0
+    completed_goals: int = 0
+    failed_goals: int = 0
 
 
 class TelemetryDashboard:
     """
     Real-time Telemetry Dashboard.
-
-    Subscribes to EventBus events to collect metrics passively.
-    Exposes a snapshot() method for Planners, UIs, or external dashboards to query.
+    Subscribes to EventBus events for Runtimes and Goals.
     """
 
     def __init__(self, event_bus: EventBus):
@@ -58,7 +61,13 @@ class TelemetryDashboard:
         self._planner_confidence: float = 1.0
         self._runtime_health: Dict[str, str] = {}
 
-        # Subscribe to relevant events
+        # Goal metrics
+        self._total_goals: int = 0
+        self._active_goals: int = 0
+        self._completed_goals: int = 0
+        self._failed_goals: int = 0
+
+        # Subscriptions
         self._event_bus.subscribe("desktop.action.completed", self._on_action_completed)
         self._event_bus.subscribe("desktop.action.failed", self._on_action_failed)
         self._event_bus.subscribe("desktop.action.started", self._on_action_started)
@@ -66,6 +75,30 @@ class TelemetryDashboard:
         self._event_bus.subscribe("desktop.emergency_stop", self._on_emergency_stop)
         self._event_bus.subscribe("browser.action.completed", self._on_action_completed)
         self._event_bus.subscribe("browser.action.failed", self._on_action_failed)
+
+        # Goal subscriptions
+        self._event_bus.subscribe("goal.created", self._on_goal_created)
+        self._event_bus.subscribe("goal.started", self._on_goal_started)
+        self._event_bus.subscribe("goal.completed", self._on_goal_completed)
+        self._event_bus.subscribe("goal.failed", self._on_goal_failed)
+        self._event_bus.subscribe("goal.recovered", self._on_goal_recovered)
+
+    def _on_goal_created(self, event: Event) -> None:
+        self._total_goals += 1
+
+    def _on_goal_started(self, event: Event) -> None:
+        self._active_goals += 1
+
+    def _on_goal_completed(self, event: Event) -> None:
+        self._active_goals = max(0, self._active_goals - 1)
+        self._completed_goals += 1
+
+    def _on_goal_failed(self, event: Event) -> None:
+        self._active_goals = max(0, self._active_goals - 1)
+        self._failed_goals += 1
+
+    def _on_goal_recovered(self, event: Event) -> None:
+        self._recovery_count += 1
 
     def _on_action_started(self, event: Event) -> None:
         self._queue_length += 1
@@ -113,15 +146,12 @@ class TelemetryDashboard:
         self._recovery_count += 1
 
     def update_planner_confidence(self, score: float) -> None:
-        """Called by the Planner to report its current confidence."""
         self._planner_confidence = score
 
     def update_runtime_health(self, runtime_name: str, state: str) -> None:
-        """Called externally to update a runtime's health status."""
         self._runtime_health[runtime_name] = state
 
     def snapshot(self) -> DashboardSnapshot:
-        """Returns a point-in-time snapshot of all telemetry metrics."""
         total = len(self._action_metrics)
         successful = sum(1 for m in self._action_metrics if m.success)
         failed = total - successful
@@ -140,12 +170,19 @@ class TelemetryDashboard:
             failed_actions=failed,
             avg_duration_ms=avg_duration,
             success_rate=success_rate,
+            total_goals=self._total_goals,
+            active_goals=self._active_goals,
+            completed_goals=self._completed_goals,
+            failed_goals=self._failed_goals,
         )
 
     def reset(self) -> None:
-        """Clears all collected metrics."""
         self._action_metrics.clear()
         self._recovery_count = 0
         self._queue_length = 0
         self._planner_confidence = 1.0
         self._runtime_health.clear()
+        self._total_goals = 0
+        self._active_goals = 0
+        self._completed_goals = 0
+        self._failed_goals = 0
