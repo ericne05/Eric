@@ -1,7 +1,7 @@
-# Eric - Phase 1 Core Dependencies
-pyyaml>=6.0.1
-loguru>=0.7.2
-python-dotenv>=1.0.1
-
-# Dev / Testing
-pytest>=8.0.0
+# Eric AI Assistant — Frozen Dependencies (v1.0 Production Release)
+playwright>=1.40.0
+pyautogui>=0.9.54
+pillow>=10.0.0
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pyinstaller>=6.2.0

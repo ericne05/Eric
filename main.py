@@ -1,23 +1,15 @@
 """
-Eric — Personal AI Agent OS
-Entry point.
+Eric AI Assistant — Root Application Entry Point.
+Executable Entry Point for PyInstaller Single-File and Inno Setup Windows Release.
 """
 
-from core.kernel.bootstrap import bootstrap
-
-
-def main() -> None:
-    """Start Eric."""
-    kernel = bootstrap()
-
-    try:
-        print("\n[Eric] Running. Press Ctrl+C to stop.\n")
-        input()
-    except (KeyboardInterrupt, EOFError):
-        pass
-    finally:
-        kernel.shutdown()
-
+import sys, asyncio
+from app.main import main
 
 if __name__ == "__main__":
-    main()
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+    asyncio.run(main())

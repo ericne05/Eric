@@ -3,10 +3,12 @@
 block_cipher = None
 
 a = Analysis(
-    ['app/main.py'],
+    ['main.py'],
     pathex=['.'],
     binaries=[],
-    datas=[],
+    datas=[
+        ('configs', 'configs'),
+    ],
     hiddenimports=[
         'core',
         'core.cognition',
@@ -18,6 +20,8 @@ a = Analysis(
         'core.browser',
         'core.telemetry',
         'core.events',
+        'core.utils',
+        'core.utils.paths',
         'app',
         'app.bootstrap',
         'app.services',

@@ -1,0 +1,10 @@
+{
+  "app_name": "Eric AI Assistant",
+  "version": "1.0.0",
+  "environment": "production",
+  "theme": "dark",
+  "llm_provider": "gemini",
+  "auto_update": true,
+  "telemetry": true,
+  "log_level": "INFO"
+}
