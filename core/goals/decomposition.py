@@ -1,10 +1,17 @@
 """
 Goal Decomposer.
-Decomposes high-level GoalSpecifications into a SubGoal DAG with multi-relation edges.
+Decomposes High-Level GoalSpecifications into SubGoals with CapabilityRequirements and SuccessCriteria.
 """
 
 from core.goals.enums import GoalType, RelationType
-from core.goals.models import Goal, GoalDependencyGraph, GoalSpecification, SubGoal
+from core.goals.models import (
+    CapabilityRequirement,
+    Goal,
+    GoalDependencyGraph,
+    GoalSpecification,
+    SubGoal,
+    SuccessCriterion,
+)
 
 
 class GoalDecomposer:
@@ -16,39 +23,44 @@ class GoalDecomposer:
         goal = Goal(spec=spec)
         graph = GoalDependencyGraph()
 
-        desc_lower = spec.description.lower()
+        desc_lower = (spec.description or spec.title or spec.intent).lower()
 
-        # Dynamic rule-based decomposition pattern
+        # Build default SuccessCriteria if empty
+        if not spec.success_criteria:
+            spec.success_criteria.append(
+                SuccessCriterion(criterion_type="execution_success", target="all_required_steps", expected_value=True)
+            )
+
         if "report" in desc_lower or "download" in desc_lower or "browser" in desc_lower:
             sg_open = SubGoal(
                 id="sg_open_browser",
                 title="Open Browser",
                 description="Launch browser and navigate to target URL",
-                required_capability="navigation",
+                capability_requirement=CapabilityRequirement(required=["navigation"], preferred=["browser"]),
             )
             sg_login = SubGoal(
                 id="sg_login",
                 title="Login to Service",
                 description="Authenticate with credentials",
-                required_capability="dom_interaction",
+                capability_requirement=CapabilityRequirement(required=["dom_interaction"], preferred=["browser"]),
             )
             sg_export = SubGoal(
                 id="sg_export",
                 title="Export Data",
                 description="Trigger export / download action",
-                required_capability="download",
+                capability_requirement=CapabilityRequirement(required=["download"], preferred=["browser"]),
             )
             sg_save = SubGoal(
                 id="sg_save",
                 title="Save File to Disk",
                 description="Save downloaded file into local filesystem",
-                required_capability="mouse",
+                capability_requirement=CapabilityRequirement(required=["mouse"], preferred=["desktop"]),
             )
             sg_verify_vision = SubGoal(
                 id="sg_verify_vision",
                 title="Verify Visual Confirmation",
                 description="Use vision runtime to verify success text on screen",
-                required_capability="ocr",
+                capability_requirement=CapabilityRequirement(required=["ocr"], preferred=["vision"], optional=["desktop"]),
             )
 
             graph.add_subgoal(sg_open)
@@ -57,26 +69,23 @@ class GoalDecomposer:
             graph.add_subgoal(sg_save)
             graph.add_subgoal(sg_verify_vision)
 
-            # Build multi-relation DAG
             graph.add_relation(sg_open.id, sg_login.id, RelationType.REQUIRED)
             graph.add_relation(sg_login.id, sg_export.id, RelationType.REQUIRED)
             graph.add_relation(sg_export.id, sg_save.id, RelationType.REQUIRED)
-            # Verify Vision is OPTIONAL (failure won't break the goal)
             graph.add_relation(sg_save.id, sg_verify_vision.id, RelationType.OPTIONAL)
 
         else:
-            # Default Desktop / Mixed Goal pattern
             sg_observe = SubGoal(
                 id="sg_observe",
                 title="Observe Environment",
                 description="Capture screen and active windows",
-                required_capability="screenshot",
+                capability_requirement=CapabilityRequirement(required=["screenshot"], preferred=["desktop", "vision"]),
             )
             sg_interact = SubGoal(
                 id="sg_interact",
                 title="Execute Desktop Action",
                 description="Perform mouse/keyboard action on active window",
-                required_capability="mouse",
+                capability_requirement=CapabilityRequirement(required=["mouse"], preferred=["desktop"]),
             )
 
             graph.add_subgoal(sg_observe)

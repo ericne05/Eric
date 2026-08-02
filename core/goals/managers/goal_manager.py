@@ -1,5 +1,6 @@
 """
-Goal Manager Implementation (Sprint 14 Product-Grade).
+Goal Manager Implementation (Sprint 14 Product-Grade v1.0).
+Generates GoalArtifact upon completion for persistent reference and Knowledge Graph (Sprint 15).
 """
 
 import asyncio, time
@@ -16,6 +17,7 @@ from core.goals.managers.recovery import GoalRecoveryManager
 from core.goals.models import (
     ExecutionPlan,
     Goal,
+    GoalArtifact,
     GoalProgress,
     GoalResult,
     GoalSpecification,
@@ -30,6 +32,7 @@ class GoalManager(IGoalManager):
     """
     Highest-level orchestration controller.
     Manages Goal lifecycle and delegates execution to GoalOrchestrator & CapabilityNegotiator.
+    Generates GoalArtifact on completion.
     NEVER executes low-level actions directly.
     """
 
@@ -46,8 +49,16 @@ class GoalManager(IGoalManager):
         self._recovery_manager = GoalRecoveryManager()
 
         self._goals: Dict[str, Goal] = {}
+        self._logs: Dict[str, list] = {}
+        self._timelines: Dict[str, list] = {}
 
     async def _emit(self, name: str, payload: dict):
+        goal_id = payload.get("goal_id")
+        if goal_id:
+            if goal_id not in self._timelines:
+                self._timelines[goal_id] = []
+            self._timelines[goal_id].append({"event": name, "timestamp": time.time(), "payload": payload})
+
         if self._event_bus:
             await self._event_bus.publish(
                 Event(name=name, source="goal_manager", payload=payload)
@@ -55,7 +66,9 @@ class GoalManager(IGoalManager):
 
     async def create_goal(self, description: str, **kwargs) -> Goal:
         spec = GoalSpecification(
+            title=kwargs.get("title", description[:50]),
             description=description,
+            intent=kwargs.get("intent", description),
             goal_type=kwargs.get("goal_type", GoalType.MIXED),
             priority=kwargs.get("priority", GoalPriority.NORMAL),
             timeout_seconds=kwargs.get("timeout_seconds", 300),
@@ -67,6 +80,7 @@ class GoalManager(IGoalManager):
         goal.state = GoalState.READY
 
         self._goals[goal.id] = goal
+        self._logs[goal.id] = [f"Goal created: {description}"]
         await self._emit("goal.created", {"goal_id": goal.id, "description": description, "cost": goal.cost_estimate})
         return goal
 
@@ -94,15 +108,16 @@ class GoalManager(IGoalManager):
             step.status = "running"
             await self._emit("goal.step.started", {"goal_id": goal.id, "step_id": step.id, "action": step.action_name})
 
-            # Execute via GoalOrchestrator (which routes via CapabilityNegotiator)
             exec_res = await self._orchestrator.execute_step(step)
             runtime_used = exec_res.get("runtime_used", "none")
 
             if exec_res.get("success"):
                 step.status = "completed"
+                self._logs[goal.id].append(f"Step '{step.action_name}' completed via {runtime_used}")
                 await self._emit("goal.step.completed", {"goal_id": goal.id, "step_id": step.id, "runtime_used": runtime_used})
             else:
                 error_msg = exec_res.get("error", "Unknown step failure")
+                self._logs[goal.id].append(f"Step '{step.action_name}' failed: {error_msg}")
                 new_state, policy = self._recovery_manager.handle_step_failure(goal, step, error_msg)
 
                 if policy == StepPolicy.RECOVER:
@@ -121,15 +136,29 @@ class GoalManager(IGoalManager):
         is_valid = self._validator.validate_completion(goal)
         elapsed = time.time() - start_time
 
-        if is_valid or goal.state == GoalState.RUNNING:
+        success = is_valid or (goal.state == GoalState.RUNNING)
+        summary_text = f"{'Successfully completed' if success else 'Failed'} in {elapsed:.2f}s across {total_steps} steps."
+
+        # Create Goal Artifact
+        artifact = GoalArtifact(
+            goal_id=goal.id,
+            title=goal.spec.title or "Goal Execution Artifact",
+            summary=summary_text,
+            logs=list(self._logs.get(goal.id, [])),
+            timeline=list(self._timelines.get(goal.id, [])),
+            telemetry_snapshot={"elapsed_seconds": elapsed, "steps_completed": step_idx, "success": success},
+        )
+        goal.artifact = artifact
+
+        if success:
             goal.state = GoalState.COMPLETED
-            res = GoalResult(success=True, goal_id=goal.id, summary=f"Completed in {elapsed:.2f}s")
+            res = GoalResult(success=True, goal_id=goal.id, summary=summary_text, artifact_id=artifact.id)
             goal.result = res
-            await self._emit("goal.completed", {"goal_id": goal.id, "elapsed": elapsed})
+            await self._emit("goal.completed", {"goal_id": goal.id, "elapsed": elapsed, "artifact_id": artifact.id})
             return res
         else:
             goal.state = GoalState.FAILED
-            res = GoalResult(success=False, goal_id=goal.id, error="Completion validation failed")
+            res = GoalResult(success=False, goal_id=goal.id, error="Completion validation failed", artifact_id=artifact.id)
             goal.result = res
             await self._emit("goal.failed", {"goal_id": goal.id, "error": "Validation failed"})
             return res

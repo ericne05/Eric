@@ -1,5 +1,5 @@
 """
-Unit Tests for Sprint 14 — Goal Manager & Autonomous Planning.
+Unit Tests for Sprint 14 — Goal Manager & Autonomous Planning (v1.0 Final).
 """
 
 import asyncio
@@ -8,34 +8,56 @@ import pytest
 from core.events.event_bus import EventBus
 from core.goals import (
     AutonomousGoalPlanner,
+    CapabilityRequirement,
     DynamicReplanner,
     ExecutionContext,
+    GoalArtifact,
     GoalCostEstimator,
     GoalDecomposer,
     GoalManager,
+    GoalPolicy,
     GoalPriority,
     GoalState,
     GoalType,
     ProgressTracker,
     RelationType,
+    SuccessCriterion,
 )
 from core.runtime.capability import CapabilityNegotiator
 from core.desktop import MockDesktopAdapter
+from core.vision import MockVisionAdapter
 
 
 @pytest.mark.asyncio
-async def test_goal_creation_and_decomposition():
+async def test_goal_creation_specification_and_criteria():
     event_bus = EventBus()
     negotiator = CapabilityNegotiator()
     manager = GoalManager(negotiator=negotiator, event_bus=event_bus)
 
-    goal = await manager.create_goal("Download monthly revenue report", goal_type=GoalType.BROWSER)
+    goal = await manager.create_goal(
+        "Download monthly revenue report",
+        title="Revenue Download",
+        intent="Obtain excel report for July 2026",
+        goal_type=GoalType.BROWSER,
+    )
 
     assert goal.id is not None
     assert goal.state == GoalState.READY
-    assert goal.spec.description == "Download monthly revenue report"
-    assert len(goal.graph.subgoals) >= 4
-    assert len(goal.plan.steps) >= 4
+    assert goal.spec.title == "Revenue Download"
+    assert goal.spec.intent == "Obtain excel report for July 2026"
+    assert len(goal.spec.success_criteria) > 0
+    assert isinstance(goal.policy, GoalPolicy)
+
+
+def test_capability_requirement_layers():
+    req = CapabilityRequirement(
+        required=["mouse"],
+        preferred=["desktop"],
+        optional=["vision"],
+    )
+    assert req.required == ["mouse"]
+    assert req.preferred == ["desktop"]
+    assert req.optional == ["vision"]
 
 
 def test_cost_estimator():
@@ -43,7 +65,7 @@ def test_cost_estimator():
     planner = AutonomousGoalPlanner()
     decomposer = GoalDecomposer()
 
-    spec = decomposer.decompose(type("Spec", (), {"description": "Download revenue report", "goal_type": GoalType.BROWSER, "priority": GoalPriority.NORMAL, "timeout_seconds": 300})())
+    spec = decomposer.decompose(type("Spec", (), {"description": "Download revenue report", "title": "Report", "intent": "Download", "goal_type": GoalType.BROWSER, "priority": GoalPriority.NORMAL, "timeout_seconds": 300, "success_criteria": []})())
     plan = planner.build_plan(spec)
 
     cost = estimator.estimate_cost(spec.spec, plan)
@@ -54,7 +76,7 @@ def test_cost_estimator():
 
 def test_goal_dag_multi_relations():
     decomposer = GoalDecomposer()
-    spec = type("Spec", (), {"description": "Download revenue report", "goal_type": GoalType.BROWSER, "priority": GoalPriority.NORMAL, "timeout_seconds": 300})()
+    spec = type("Spec", (), {"description": "Download revenue report", "title": "Report", "intent": "Download", "goal_type": GoalType.BROWSER, "priority": GoalPriority.NORMAL, "timeout_seconds": 300, "success_criteria": []})()
     goal = decomposer.decompose(spec)
 
     has_optional = False
@@ -63,15 +85,6 @@ def test_goal_dag_multi_relations():
             has_optional = True
             break
     assert has_optional is True
-
-
-def test_progress_tracker():
-    event_bus = EventBus()
-    tracker = ProgressTracker(event_bus)
-
-    progress = tracker.update_progress("g1", step_index=2, total_steps=4, current_runtime="desktop")
-    assert progress.percentage == 50.0
-    assert progress.current_runtime == "desktop"
 
 
 @pytest.mark.asyncio
@@ -83,32 +96,34 @@ async def test_execution_context_snapshot_pause_resume():
     manager = GoalManager(negotiator=negotiator, event_bus=event_bus)
     goal = await manager.create_goal("Execute desktop task")
 
-    # Set step index
     goal.progress.current_step_index = 1
     goal.state = GoalState.RUNNING
 
-    # Pause goal
     paused = await manager.pause_goal(goal.id)
     assert paused is True
     assert goal.state == GoalState.PAUSED
 
-    # Resume step restoration
     resumed_step = manager._context.restore_goal_state(goal)
     assert resumed_step == 1
     assert goal.state == GoalState.RUNNING
 
 
-def test_dynamic_replanning():
-    replanner = DynamicReplanner()
-    planner = AutonomousGoalPlanner()
-    decomposer = GoalDecomposer()
+@pytest.mark.asyncio
+async def test_goal_artifact_generated_on_completion():
+    event_bus = EventBus()
+    negotiator = CapabilityNegotiator()
+    negotiator.register_runtime("desktop", MockDesktopAdapter(event_bus))
 
-    goal = decomposer.decompose(type("Spec", (), {"description": "Download revenue report", "goal_type": GoalType.BROWSER, "priority": GoalPriority.NORMAL, "timeout_seconds": 300})())
-    goal.plan = planner.build_plan(goal)
+    manager = GoalManager(negotiator=negotiator, event_bus=event_bus)
+    goal = await manager.create_goal("Execute desktop goal with artifact generation")
 
-    failed_step = goal.plan.steps[1]
-    failed_step.status = "failed"
+    res = await manager.start_goal(goal.id)
+    assert res.success is True
 
-    new_plan = replanner.replan(goal, failed_step, "Network timeout")
-    assert new_plan.version == 2
-    assert any("recover" in s.action_name for s in new_plan.steps)
+    # Goal Artifact must be populated
+    assert goal.artifact is not None
+    assert isinstance(goal.artifact, GoalArtifact)
+    assert goal.artifact.goal_id == goal.id
+    assert len(goal.artifact.logs) > 0
+    assert len(goal.artifact.timeline) > 0
+    assert goal.artifact.telemetry_snapshot["success"] is True

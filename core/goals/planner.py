@@ -7,6 +7,7 @@ from typing import List
 from core.goals.decomposition import GoalDecomposer
 from core.goals.interfaces import IGoalPlanner, IReplanner
 from core.goals.models import (
+    CapabilityRequirement,
     ExecutionPlan,
     ExecutionStep,
     Goal,
@@ -27,22 +28,19 @@ class DynamicReplanner(IReplanner):
             version=goal.plan.version + 1,
         )
 
-        # Copy completed steps
         for step in goal.plan.steps:
             if step.status == "completed":
                 new_plan.steps.append(step)
 
-        # Insert recovery / fallback step for failed step
         recovery_step = ExecutionStep(
             subgoal_id=failed_step.subgoal_id,
             action_name=f"recover_{failed_step.action_name}",
-            capability_required=failed_step.capability_required or "mouse",
+            capability_requirement=failed_step.capability_requirement,
             arguments={"reason": error_msg, "original_args": failed_step.arguments},
             estimated_duration_sec=2.0,
         )
         new_plan.steps.append(recovery_step)
 
-        # Re-add pending steps
         found_failed = False
         for step in goal.plan.steps:
             if step.id == failed_step.id:
@@ -73,7 +71,7 @@ class AutonomousGoalPlanner(IGoalPlanner):
             step = ExecutionStep(
                 subgoal_id=sg_id,
                 action_name=subgoal.title.lower().replace(" ", "_"),
-                capability_required=subgoal.required_capability,
+                capability_requirement=subgoal.capability_requirement,
                 arguments={"description": subgoal.description},
                 estimated_duration_sec=1.5,
             )

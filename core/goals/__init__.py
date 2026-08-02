@@ -1,5 +1,5 @@
 """
-Goal Subsystem Package (Sprint 14 Product-Grade).
+Goal Subsystem Package (Sprint 14 Product-Grade v1.0).
 """
 
 from core.goals.adapters.mock_goal_adapter import MockGoalAdapter
@@ -19,17 +19,21 @@ from core.goals.managers.goal_manager import GoalManager
 from core.goals.managers.progress_tracker import ProgressTracker
 from core.goals.managers.recovery import GoalRecoveryManager
 from core.goals.models import (
+    CapabilityRequirement,
     DAGRelation,
     ExecutionPlan,
     ExecutionStep,
     Goal,
+    GoalArtifact,
     GoalCostEstimate,
     GoalDependencyGraph,
     GoalMemoryReference,
+    GoalPolicy,
     GoalProgress,
     GoalResult,
     GoalSpecification,
     SubGoal,
+    SuccessCriterion,
 )
 from core.goals.orchestrator import GoalOrchestrator
 from core.goals.planner import AutonomousGoalPlanner, DynamicReplanner
@@ -41,7 +45,11 @@ __all__ = [
     "GoalType",
     "RelationType",
     "StepPolicy",
+    "SuccessCriterion",
     "GoalSpecification",
+    "CapabilityRequirement",
+    "GoalPolicy",
+    "GoalArtifact",
     "SubGoal",
     "DAGRelation",
     "GoalDependencyGraph",

@@ -1,5 +1,6 @@
 """
-Goal Manager Data Models (Sprint 14 Product-Grade).
+Goal Manager Data Models (Sprint 14 Product-Grade v1.0).
+Includes SuccessCriterion, CapabilityRequirement, GoalPolicy, and GoalArtifact.
 """
 
 from __future__ import annotations
@@ -19,18 +20,66 @@ from core.goals.enums import (
 
 
 @dataclass
+class SuccessCriterion:
+    """Explicit criterion used to validate goal or step completion."""
+    criterion_type: str  # 'file_exists', 'min_size', 'extension_match', 'text_contains', 'condition_expr'
+    target: str = ""
+    expected_value: Any = None
+
+
+@dataclass
 class GoalSpecification:
     """
     Goal Specification — Defines WHAT the user wants to achieve.
     Strictly separated from the ExecutionPlan (HOW to achieve it).
     """
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    title: str = ""
+    intent: str = ""
     description: str = ""
     goal_type: GoalType = GoalType.MIXED
     priority: GoalPriority = GoalPriority.NORMAL
-    success_criteria: List[str] = field(default_factory=list)
+    success_criteria: List[SuccessCriterion] = field(default_factory=list)
     constraints: Dict[str, Any] = field(default_factory=dict)
+    expected_result: Any = None
     timeout_seconds: int = 300
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class CapabilityRequirement:
+    """Layered capability requirement allowing graceful runtime fallbacks."""
+    required: List[str] = field(default_factory=list)   # Hard requirement (e.g. ['desktop'])
+    preferred: List[str] = field(default_factory=list)  # Preferred runtime (e.g. ['vision'])
+    optional: List[str] = field(default_factory=list)   # Optional runtime (e.g. ['browser'])
+
+
+@dataclass
+class GoalPolicy:
+    """Policy rules governing Planner & Orchestrator behavior for a Goal."""
+    allow_parallel: bool = True
+    allow_retry: bool = True
+    allow_user_confirmation: bool = False
+    allow_replanning: bool = True
+    allow_partial_success: bool = False
+
+
+@dataclass
+class GoalArtifact:
+    """
+    Goal Artifact — Structured output produced after Goal completion.
+    Serves as persistent reference for future goals and Knowledge Graph (Sprint 15).
+    """
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    goal_id: str = ""
+    title: str = ""
+    summary: str = ""
+    files_generated: List[str] = field(default_factory=list)
+    logs: List[str] = field(default_factory=list)
+    timeline: List[Dict[str, Any]] = field(default_factory=list)
+    telemetry_snapshot: Dict[str, Any] = field(default_factory=dict)
+    memory_reference_id: Optional[str] = None
+    timestamp: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc))
 
 
 @dataclass
@@ -39,7 +88,7 @@ class SubGoal:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     title: str = ""
     description: str = ""
-    required_capability: str = ""  # e.g., 'mouse', 'navigation', 'ocr'
+    capability_requirement: CapabilityRequirement = field(default_factory=CapabilityRequirement)
     status: str = "pending"  # pending, running, completed, failed, skipped
     result_data: Any = None
 
@@ -50,7 +99,7 @@ class DAGRelation:
     source_subgoal_id: str
     target_subgoal_id: str
     relation_type: RelationType = RelationType.REQUIRED
-    condition_expr: Optional[str] = None  # Used if relation_type == CONDITIONAL
+    condition_expr: Optional[str] = None
 
 
 @dataclass
@@ -79,7 +128,6 @@ class GoalDependencyGraph:
         )
 
     def get_prerequisites(self, subgoal_id: str) -> List[Tuple[SubGoal, RelationType]]:
-        """Returns list of (parent_subgoal, relation_type) for the given subgoal."""
         prereqs = []
         for rel in self.relations:
             if rel.target_subgoal_id == subgoal_id and rel.source_subgoal_id in self.subgoals:
@@ -93,7 +141,7 @@ class ExecutionStep:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     subgoal_id: str = ""
     action_name: str = ""
-    capability_required: str = ""  # e.g., 'mouse', 'navigation', 'ocr'
+    capability_requirement: CapabilityRequirement = field(default_factory=CapabilityRequirement)
     arguments: Dict[str, Any] = field(default_factory=dict)
     status: str = "pending"
     policy: StepPolicy = StepPolicy.RECOVER
@@ -106,7 +154,7 @@ class ExecutionPlan:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     goal_id: str = ""
     steps: List[ExecutionStep] = field(default_factory=list)
-    version: int = 1  # Incremented on replanning
+    version: int = 1
 
 
 @dataclass
@@ -140,6 +188,7 @@ class GoalResult:
     output_data: Any = None
     error: Optional[str] = None
     summary: str = ""
+    artifact_id: Optional[str] = None
 
 
 @dataclass
@@ -149,6 +198,7 @@ class GoalMemoryReference:
     description: str
     success: bool
     summary: str
+    artifact_id: Optional[str] = None
     timestamp: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc))
 
 
@@ -156,13 +206,15 @@ class GoalMemoryReference:
 class Goal:
     """
     Root Goal Container.
-    Holds Specification, Dependency Graph, Execution Plan, Cost Estimate, and Progress.
+    Holds Specification, Policy, Dependency Graph, Execution Plan, Cost Estimate, Progress, and Artifact.
     """
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     spec: GoalSpecification = field(default_factory=GoalSpecification)
+    policy: GoalPolicy = field(default_factory=GoalPolicy)
     graph: GoalDependencyGraph = field(default_factory=GoalDependencyGraph)
     plan: ExecutionPlan = field(default_factory=ExecutionPlan)
     cost_estimate: GoalCostEstimate = field(default_factory=GoalCostEstimate)
     progress: GoalProgress = field(default_factory=GoalProgress)
     state: GoalState = GoalState.CREATED
     result: Optional[GoalResult] = None
+    artifact: Optional[GoalArtifact] = None
