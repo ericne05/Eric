@@ -229,3 +229,17 @@ class MockDesktopAdapter(IDesktopRuntime):
 
     def get_health(self) -> Dict[str, Any]:
         return {"state": self._state.value, "mouse_ok": True, "keyboard_ok": True}
+
+    # ── IRuntime lifecycle methods ─────────────────────────────────────
+
+    async def observe(self) -> Any:
+        return {"focused_window": "Notepad", "resolution": (1920, 1080)}
+
+    async def plan(self, goal: str, observation: Any) -> Any:
+        return [{"action": "click", "x": 100, "y": 100}]
+
+    async def execute(self, plan: Any) -> Any:
+        return {"success": True, "actions_executed": len(plan) if isinstance(plan, list) else 1}
+
+    async def recover(self, error: Exception, context: Any) -> Any:
+        return {"state": "recovered"}
