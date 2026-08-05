@@ -5,6 +5,7 @@ Executable Host -> Splash Screen -> Load Config -> Init Kernel -> Init DI Contai
 
 import asyncio
 from typing import Any, Dict, Optional
+from dotenv import load_dotenv
 
 from core.cognition import CognitiveCoordinator
 from core.desktop import MockDesktopAdapter
@@ -33,6 +34,7 @@ class AppBootstrap:
 
     async def initialize(self) -> Dict[str, Any]:
         """Runs the full startup sequence."""
+        load_dotenv()
         self.event_bus = EventBus()
         self.telemetry = TelemetryDashboard(self.event_bus)
 
@@ -58,8 +60,8 @@ class AppBootstrap:
         }
 
     async def shutdown(self) -> None:
-        if self.desktop_runtime:
+        if self.desktop_runtime and hasattr(self.desktop_runtime, "stop"):
             await self.desktop_runtime.stop()
-        if self.vision_runtime:
-            await self.vision_runtime.shutdown()
+        if self.vision_runtime and hasattr(self.vision_runtime, "stop"):
+            await self.vision_runtime.stop()
         self.is_bootstrapped = False
