@@ -8,8 +8,14 @@ a = Analysis(
     binaries=[],
     datas=[
         ('configs', 'configs'),
+        ('.env', '.'),
     ],
     hiddenimports=[
+        'google.generativeai',
+        'google.ai.generativelanguage',
+        'openai',
+        'httpx',
+        'requests',
         'core',
         'core.cognition',
         'core.goals',

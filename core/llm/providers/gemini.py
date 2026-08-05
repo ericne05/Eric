@@ -27,7 +27,7 @@ class GeminiProvider(ILLMProvider):
     Hỗ trợ: google-generativeai SDK (ưu tiên) hoặc REST API fallback.
     """
 
-    DEFAULT_MODEL = "gemini-1.5-flash"
+    DEFAULT_MODEL = "gemini-2.0-flash"
 
     def __init__(
         self,
