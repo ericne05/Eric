@@ -161,9 +161,16 @@ class GeminiProvider(ILLMProvider):
         """
         lower = user_input.lower().strip()
 
-        # Nếu là câu hỏi tổng hợp kết quả thực thi
-        if "kết quả thực thi" in lower or "yêu cầu của người dùng" in lower:
-            return "✓ Đã xử lý yêu cầu thành công trên hệ thống!"
+        # Scolding / Apology patterns
+        scolding_words = {"ngu", "dở", "dốt", "kém", "tệ", "gà", "bậy"}
+        if any(w in lower for w in scolding_words):
+            return "Em xin lỗi Sếp ạ! Em sẽ rút kinh nghiệm và tiếp tục hoàn thiện để hỗ trợ Sếp tốt hơn ạ."
+
+        # Time query patterns
+        if any(w in lower for w in ("mấy giờ", "thời gian")):
+            from datetime import datetime
+            now_str = datetime.now().strftime("%H:%M:%S, ngày %d/%m/%Y")
+            return f"Bây giờ là {now_str} ạ Sếp!"
 
         # Greeting patterns
         greetings = {"hi", "hello", "chào", "alo", "xin chào", "hey", "chào tao đi", "chào tao"}
@@ -180,11 +187,12 @@ class GeminiProvider(ILLMProvider):
             "word": ("launch_application", {"application": "winword"}, ["desktop"]),
             "excel": ("launch_application", {"application": "excel"}, ["desktop"]),
             "chrome": ("launch_application", {"application": "chrome"}, ["desktop", "browser"]),
+            "chorm": ("launch_application", {"application": "chrome"}, ["desktop", "browser"]),
+            "chorme": ("launch_application", {"application": "chrome"}, ["desktop", "browser"]),
+            "chrom": ("launch_application", {"application": "chrome"}, ["desktop", "browser"]),
             "vscode": ("launch_application", {"application": "code"}, ["desktop"]),
             "explorer": ("launch_application", {"application": "explorer"}, ["desktop"]),
             "youtube": ("navigate_web", {"url": "https://www.youtube.com"}, ["browser"]),
-            "mấy giờ": ("system_info", {"info": "time"}, ["desktop"]),
-            "thời gian": ("system_info", {"info": "time"}, ["desktop"]),
         }
         for keyword, (intent, params, caps) in app_patterns.items():
             if keyword in lower:

@@ -270,6 +270,13 @@ class BackendBridge:
     async def _handle_chat_fastpath(self, prompt: str, intent: IntentType) -> str:
         """Xử lý nhanh các câu chào xã giao mà không cần gọi LLM."""
         lower = prompt.lower().strip()
+        scolding_words = {"ngu", "dở", "dốt", "kém", "tệ", "gà", "bậy"}
+        if any(w in lower for w in scolding_words):
+            return "Em xin lỗi Sếp ạ! Em sẽ rút kinh nghiệm và tiếp tục hoàn thiện để hỗ trợ Sếp tốt hơn ạ."
+        if any(w in lower for w in ("mấy giờ", "thời gian")):
+            from datetime import datetime
+            now_str = datetime.now().strftime("%H:%M:%S, ngày %d/%m/%Y")
+            return f"Bây giờ là {now_str} ạ Sếp!"
         if any(g in lower for g in ("chào", "alo", "hello", "hi", "xin chào", "hey")):
             return "Xin chào Sếp! Em là Eric, trợ lý AI của Sếp trên Windows. Em có thể giúp gì cho Sếp hôm nay ạ?"
         if any(g in lower for g in ("cảm ơn", "thank", "tks")):
