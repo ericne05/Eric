@@ -42,20 +42,36 @@ class GeminiProvider(ILLMProvider):
         self._max_output_tokens = max_output_tokens
         self._sdk_available = False
         self._genai = None
+        self._client = None
+        self._use_new_genai = False
 
         self._try_init_sdk()
 
     def _try_init_sdk(self) -> None:
-        """Thử khởi tạo Google GenAI SDK. Nếu không có thì fallback sang REST."""
+        """Thử khởi tạo Google GenAI SDK (google.genai hoặc google.generativeai)."""
+        if not self._api_key:
+            self._sdk_available = False
+            return
+
         try:
-            import google.generativeai as genai  # type: ignore
-            if self._api_key:
-                genai.configure(api_key=self._api_key)
-                self._genai = genai
-                self._sdk_available = True
-            else:
-                self._sdk_available = False
-        except ImportError:
+            from google import genai  # type: ignore
+            self._client = genai.Client(api_key=self._api_key)
+            self._use_new_genai = True
+            self._sdk_available = True
+            logger.info("[GeminiProvider] Using modern google.genai SDK Client")
+            return
+        except Exception as e:
+            logger.debug(f"[GeminiProvider] google.genai init: {e}")
+
+        try:
+            import google.generativeai as genai_old  # type: ignore
+            genai_old.configure(api_key=self._api_key)
+            self._genai = genai_old
+            self._use_new_genai = False
+            self._sdk_available = True
+            logger.info("[GeminiProvider] Using google.generativeai SDK")
+        except Exception as e:
+            logger.debug(f"[GeminiProvider] google.generativeai init: {e}")
             self._sdk_available = False
 
     async def generate(
@@ -76,7 +92,7 @@ class GeminiProvider(ILLMProvider):
                 self._api_key = env_key
                 self._try_init_sdk()
 
-        if self._sdk_available and self._genai and self._api_key:
+        if self._sdk_available and (self._client or self._genai) and self._api_key:
             return await self._generate_with_sdk(messages, model_name, start)
         else:
             return await self._generate_with_rest(messages, model_name, start)
@@ -102,6 +118,19 @@ class GeminiProvider(ILLMProvider):
 
     def _sync_sdk_call(self, messages: List[LLMMessage], model_name: str) -> str:
         """Gọi đồng bộ Gemini SDK trong executor."""
+        if self._use_new_genai and self._client:
+            contents = []
+            for msg in messages:
+                if msg.role != MessageRole.SYSTEM and msg.content:
+                    contents.append(f"{msg.role.value}: {msg.content}")
+            if not contents:
+                contents = ["Xin chào"]
+            res = self._client.models.generate_content(
+                model=model_name,
+                contents=contents,
+            )
+            return res.text or ""
+
         history = []
         system_instruction = None
 
