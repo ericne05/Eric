@@ -271,17 +271,12 @@ class BackendBridge:
         """Xử lý nhanh các câu chào xã giao mà không cần gọi LLM."""
         lower = prompt.lower().strip()
         if any(g in lower for g in ("chào", "alo", "hello", "hi", "xin chào", "hey")):
-            return (
-                "Xin chào! Tôi là Eric, trợ lý AI cá nhân của bạn trên Windows.\n"
-                "Tôi có thể giúp bạn mở ứng dụng, tìm kiếm thông tin, "
-                "tự động hóa công việc trên Desktop và Browser.\n"
-                "Bạn cần hỗ trợ gì?"
-            )
+            return "Xin chào Sếp! Em là Eric, trợ lý AI của Sếp trên Windows. Em có thể giúp gì cho Sếp hôm nay ạ?"
         if any(g in lower for g in ("cảm ơn", "thank", "tks")):
-            return "Không có gì! Tôi luôn sẵn sàng hỗ trợ bạn."
+            return "Không có gì ạ! Em luôn sẵn sàng hỗ trợ Sếp."
         if any(g in lower for g in ("tạm biệt", "bye", "goodbye")):
-            return "Tạm biệt! Hẹn gặp lại bạn nhé."
-        return "Được! Bạn cần tôi hỗ trợ gì thêm không?"
+            return "Tạm biệt Sếp! Hẹn gặp lại Sếp nhé."
+        return "Dạ Sếp! Em có thể giúp gì thêm cho Sếp không ạ?"
 
     def get_runtime_health(self) -> Dict[str, str]:
         if not self._bootstrap.telemetry:

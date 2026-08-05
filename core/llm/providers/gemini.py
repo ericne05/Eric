@@ -166,9 +166,9 @@ class GeminiProvider(ILLMProvider):
             return "✓ Đã xử lý yêu cầu thành công trên hệ thống!"
 
         # Greeting patterns
-        greetings = {"hi", "hello", "chào", "alo", "xin chào", "hey", "chào tao đi"}
+        greetings = {"hi", "hello", "chào", "alo", "xin chào", "hey", "chào tao đi", "chào tao"}
         if any(g in lower for g in greetings) and len(lower) < 25:
-            return "Xin chào! Tôi là Eric, trợ lý AI của bạn. Tôi có thể giúp bạn mở ứng dụng, tìm kiếm thông tin hoặc tự động hóa các tác vụ trên Windows. Bạn cần hỗ trợ gì?"
+            return "Xin chào Sếp! Em là Eric, trợ lý AI của Sếp trên Windows. Em có thể giúp gì cho Sếp hôm nay ạ?"
 
         # Application & Web patterns
         app_patterns = {
@@ -214,16 +214,8 @@ class GeminiProvider(ILLMProvider):
                 "confidence": 0.90,
             }, ensure_ascii=False)
 
-        # Default
-        return json.dumps({
-            "response_type": "agent",
-            "intent": "unknown",
-            "parameters": {"raw_input": user_input},
-            "capability_requirements": [],
-            "expected_result": {},
-            "reasoning": "Không nhận diện được ý định cụ thể",
-            "confidence": 0.3,
-        }, ensure_ascii=False)
+        # Default natural text response (không trả JSON thô ra màn hình)
+        return "Dạ Sếp! Em luôn sẵn sàng hỗ trợ Sếp trên hệ thống. Sếp cần em mở ứng dụng hay xử lý tác vụ gì ạ?"
 
     @property
     def is_available(self) -> bool:

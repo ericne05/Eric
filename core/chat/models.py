@@ -110,8 +110,8 @@ class ParsedGoalSpec:
     raw_json: str = ""                              # Lưu JSON gốc để debug
 
     def is_valid(self) -> bool:
-        """GoalSpec hợp lệ khi có intent và parameters."""
-        return bool(self.intent and self.intent != "unknown")
+        """GoalSpec hợp lệ khi có intent (khác unknown) và confidence >= 0.5."""
+        return bool(self.intent and self.intent != "unknown" and self.confidence >= 0.5)
 
     def requires_desktop(self) -> bool:
         return "desktop" in self.capability_requirements
