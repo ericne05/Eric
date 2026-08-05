@@ -11,6 +11,8 @@ a = Analysis(
         ('.env', '.'),
     ],
     hiddenimports=[
+        'google.genai',
+        'pydantic',
         'google.generativeai',
         'google.ai.generativelanguage',
         'openai',

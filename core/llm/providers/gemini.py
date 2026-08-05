@@ -27,7 +27,7 @@ class GeminiProvider(ILLMProvider):
     Hỗ trợ: google-generativeai SDK (ưu tiên) hoặc REST API fallback.
     """
 
-    DEFAULT_MODEL = "gemini-2.0-flash"
+    DEFAULT_MODEL = "gemini-flash-latest"
 
     def __init__(
         self,
@@ -119,17 +119,42 @@ class GeminiProvider(ILLMProvider):
     def _sync_sdk_call(self, messages: List[LLMMessage], model_name: str) -> str:
         """Gọi đồng bộ Gemini SDK trong executor."""
         if self._use_new_genai and self._client:
+            from google.genai import types  # type: ignore
+
+            system_instruction = None
             contents = []
             for msg in messages:
-                if msg.role != MessageRole.SYSTEM and msg.content:
+                if msg.role == MessageRole.SYSTEM:
+                    system_instruction = msg.content
+                elif msg.content:
                     contents.append(f"{msg.role.value}: {msg.content}")
+
             if not contents:
                 contents = ["Xin chào"]
-            res = self._client.models.generate_content(
-                model=model_name,
-                contents=contents,
+
+            config = types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                temperature=self._temperature,
+                max_output_tokens=self._max_output_tokens,
             )
-            return res.text or ""
+
+            # Retry tối đa 3 lần nếu gặp lỗi tạm thời (503 UNAVAILABLE, 429 RATE LIMIT)
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    res = self._client.models.generate_content(
+                        model=model_name,
+                        contents=contents,
+                        config=config,
+                    )
+                    return res.text or ""
+                except Exception as e:
+                    err_str = str(e)
+                    if ("503" in err_str or "UNAVAILABLE" in err_str or "429" in err_str) and attempt < max_retries - 1:
+                        logger.warning(f"[GeminiProvider] 503/429 transient error (lần {attempt+1}/{max_retries}), thử lại sau 1s: {e}")
+                        time.sleep(1)
+                        continue
+                    raise e
 
         history = []
         system_instruction = None
