@@ -64,6 +64,7 @@ class BackendBridge:
         self._goal_parser = GoalParser()
         self._status_listeners: List[Callable[[str], None]] = []
         self._conversation = Conversation()
+        self._user_preferences: Dict[str, Any] = {}
 
         self.activity_logs: List[str] = []
         self.notifications: List[Dict[str, Any]] = []
@@ -268,21 +269,49 @@ class BackendBridge:
         return f"❌ Không thể thực hiện '{user_input}': {result.error}"
 
     async def _handle_chat_fastpath(self, prompt: str, intent: IntentType) -> str:
-        """Xử lý nhanh các câu chào xã giao mà không cần gọi LLM."""
+        """Xử lý nhanh các câu chào xã giao và ghi nhớ phản hồi của Sếp."""
         lower = prompt.lower().strip()
+        from datetime import datetime
+
+        # 1. Ghi nhớ sở thích / phản hồi của Sếp
+        if any(w in lower for w in ("không hỏi ngày", "không cần ngày", "chỉ hỏi giờ", "chỉ cần giờ")):
+            self._user_preferences["time_only"] = True
+            return "Em xin lỗi Sếp ạ! Em đã ghi nhớ: Từ bây giờ khi Sếp hỏi giờ, em sẽ chỉ trả lời giờ và không kèm theo ngày nữa ạ."
+
+        # 2. Xử lý yêu cầu "trả lời lại" / "thử lại"
+        if lower in ("trả lời lại", "nói lại", "sửa lại", "thử lại", "trả lời lại đi"):
+            history = self._conversation.get_history(include_system=False)
+            prev_user_msgs = [m.content for m in history if m.role == ChatRole.USER and m.content != prompt]
+            if prev_user_msgs:
+                last_query = prev_user_msgs[-1]
+                return await self._handle_chat_fastpath(last_query, intent)
+            return "Dạ Sếp! Em sẵn sàng trả lời lại ạ. Sếp muốn em trả lời lại câu hỏi nào ạ?"
+
+        # 3. Phản ứng khi Sếp góp ý / mắng
         scolding_words = {"ngu", "dở", "dốt", "kém", "tệ", "gà", "bậy"}
         if any(w in lower for w in scolding_words):
             return "Em xin lỗi Sếp ạ! Em sẽ rút kinh nghiệm và tiếp tục hoàn thiện để hỗ trợ Sếp tốt hơn ạ."
+
+        # 4. Hỏi giờ / ngày
         if any(w in lower for w in ("mấy giờ", "thời gian")):
-            from datetime import datetime
-            now_str = datetime.now().strftime("%H:%M:%S, ngày %d/%m/%Y")
-            return f"Bây giờ là {now_str} ạ Sếp!"
+            now_time = datetime.now().strftime("%H:%M:%S")
+            if self._user_preferences.get("time_only", True):
+                return f"Bây giờ là {now_time} ạ Sếp!"
+            now_full = datetime.now().strftime("%H:%M:%S, ngày %d/%m/%Y")
+            return f"Bây giờ là {now_full} ạ Sếp!"
+
+        if any(w in lower for w in ("ngày mấy", "ngày bao nhiêu", "hôm nay ngày")):
+            now_date = datetime.now().strftime("ngày %d/%m/%Y")
+            return f"Hôm nay là {now_date} ạ Sếp!"
+
+        # 5. Chào hỏi xã giao
         if any(g in lower for g in ("chào", "alo", "hello", "hi", "xin chào", "hey")):
             return "Xin chào Sếp! Em là Eric, trợ lý AI của Sếp trên Windows. Em có thể giúp gì cho Sếp hôm nay ạ?"
         if any(g in lower for g in ("cảm ơn", "thank", "tks")):
             return "Không có gì ạ! Em luôn sẵn sàng hỗ trợ Sếp."
         if any(g in lower for g in ("tạm biệt", "bye", "goodbye")):
             return "Tạm biệt Sếp! Hẹn gặp lại Sếp nhé."
+
         return "Dạ Sếp! Em có thể giúp gì thêm cho Sếp không ạ?"
 
     def get_runtime_health(self) -> Dict[str, str]:
