@@ -117,11 +117,11 @@ class BackendBridge:
             if m.role != ChatRole.SYSTEM
         ]
 
-        if intent_cls.intent in (IntentType.QUESTION, IntentType.MEMORY_UPDATE):
-            # Chat mode — LLM trả lời trực tiếp, không cần GoalSpec
+        if intent_cls.intent != IntentType.AGENT:
+            # Chat mode — LLM trả lời trực tiếp tự nhiên, không qua GoalSpec
             messages = PromptBuilder.build_chat_request(prompt, history)
             llm_response = await self._llm_router.chat(messages, required_capability="chat")
-            reply = llm_response.content or "Xin lỗi, tôi không thể trả lời lúc này."
+            reply = llm_response.content or "Xin lỗi, tôi chưa thể trả lời yêu cầu này lúc này."
             msg = self._session_manager.add_message(reply, sender="eric", status="completed")
             self._conversation.add_assistant_message(reply)
             self._notify_status("Hoàn thành")
@@ -146,13 +146,13 @@ class BackendBridge:
 
         # Nếu vẫn thất bại hoặc LLM trả plain text
         if spec is None or not spec.is_valid():
-            # LLM có thể đã trả câu trả lời text thông thường
-            if self._goal_parser.is_chat_response(raw_output):
-                reply = raw_output
-            else:
-                reply = f"Tôi đã nhận được yêu cầu '{prompt}' nhưng chưa thể xác định hành động cụ thể. Bạn có thể mô tả rõ hơn không?"
+            # Chuyển sang trả lời Chat tự nhiên bằng LLM thay vì báo lỗi mẫu
+            messages = PromptBuilder.build_chat_request(prompt, history)
+            llm_chat = await self._llm_router.chat(messages, required_capability="chat")
+            reply = llm_chat.content or f"Tôi đã nhận được yêu cầu '{prompt}'."
             msg = self._session_manager.add_message(reply, sender="eric", status="completed")
             self._conversation.add_assistant_message(reply)
+            self._notify_status("Hoàn thành")
             return msg
 
         # ── Bước 7: GoalManager nhận ParsedGoalSpec -> Planner -> Runtime ──
