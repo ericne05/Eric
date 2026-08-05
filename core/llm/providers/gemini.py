@@ -138,10 +138,15 @@ class GeminiProvider(ILLMProvider):
     ) -> LLMResponse:
         """Pattern matching fallback khi không có API key hoặc API lỗi."""
         elapsed = (time.time() - start) * 1000
-        user_content = next(
-            (m.content for m in reversed(messages) if m.role == MessageRole.USER),
-            ""
-        )
+        # Bỏ qua repair prompt để lấy user prompt gốc
+        user_content = ""
+        for m in reversed(messages):
+            if m.role == MessageRole.USER and not m.content.startswith("JSON bạn vừa sinh ra"):
+                user_content = m.content
+                break
+        if not user_content:
+            user_content = next((m.content for m in reversed(messages) if m.role == MessageRole.USER), "")
+
         content = self._simple_fallback_response(user_content or "")
         return LLMResponse(
             content=content,
@@ -152,7 +157,7 @@ class GeminiProvider(ILLMProvider):
 
     def _simple_fallback_response(self, user_input: str) -> str:
         """
-        Pattern-based fallback khi Gemini API chưa được kết nối.
+        Pattern-based fallback khi Gemini API chưa được kết nối hoặc phản hồi chậm.
         """
         lower = user_input.lower().strip()
 
@@ -161,11 +166,11 @@ class GeminiProvider(ILLMProvider):
             return "✓ Đã xử lý yêu cầu thành công trên hệ thống!"
 
         # Greeting patterns
-        greetings = {"hi", "hello", "chào", "alo", "xin chào", "hey"}
-        if any(g in lower for g in greetings) and len(lower) < 20:
+        greetings = {"hi", "hello", "chào", "alo", "xin chào", "hey", "chào tao đi"}
+        if any(g in lower for g in greetings) and len(lower) < 25:
             return "Xin chào! Tôi là Eric, trợ lý AI của bạn. Tôi có thể giúp bạn mở ứng dụng, tìm kiếm thông tin hoặc tự động hóa các tác vụ trên Windows. Bạn cần hỗ trợ gì?"
 
-        # Application launch patterns
+        # Application & Web patterns
         app_patterns = {
             "notepad": ("launch_application", {"application": "notepad"}, ["desktop"]),
             "note": ("launch_application", {"application": "notepad"}, ["desktop"]),
@@ -177,6 +182,9 @@ class GeminiProvider(ILLMProvider):
             "chrome": ("launch_application", {"application": "chrome"}, ["desktop", "browser"]),
             "vscode": ("launch_application", {"application": "code"}, ["desktop"]),
             "explorer": ("launch_application", {"application": "explorer"}, ["desktop"]),
+            "youtube": ("navigate_web", {"url": "https://www.youtube.com"}, ["browser"]),
+            "mấy giờ": ("system_info", {"info": "time"}, ["desktop"]),
+            "thời gian": ("system_info", {"info": "time"}, ["desktop"]),
         }
         for keyword, (intent, params, caps) in app_patterns.items():
             if keyword in lower:
@@ -185,8 +193,8 @@ class GeminiProvider(ILLMProvider):
                     "intent": intent,
                     "parameters": params,
                     "capability_requirements": caps,
-                    "expected_result": {"description": f"Ứng dụng '{params['application']}' đã mở"},
-                    "reasoning": f"Người dùng muốn mở {keyword}",
+                    "expected_result": {"description": f"Đã mở {keyword}"},
+                    "reasoning": f"Người dùng muốn {intent} {keyword}",
                     "confidence": 0.95,
                 }, ensure_ascii=False)
 
