@@ -179,7 +179,34 @@ class BackendBridge:
     async def _execute_spec(self, spec: ParsedGoalSpec, original_prompt: str) -> ExecutionResult:
         """Chuyển ParsedGoalSpec sang GoalManager và thực thi."""
         import time
+        import subprocess
         start = time.time()
+
+        # Thực thi mở ứng dụng thật sự trên hệ thống Windows
+        if spec.intent == "launch_application":
+            app_name = str(spec.parameters.get("application", spec.parameters.get("name", "notepad"))).strip()
+            executable_map = {
+                "notepad": "notepad.exe",
+                "note": "notepad.exe",
+                "ghi chú": "notepad.exe",
+                "chrome": "chrome.exe",
+                "calc": "calc.exe",
+                "máy tính": "calc.exe",
+                "calculator": "calc.exe",
+                "word": "winword.exe",
+                "winword": "winword.exe",
+                "excel": "excel.exe",
+                "vscode": "code.cmd",
+                "code": "code.cmd",
+                "explorer": "explorer.exe",
+            }
+            cmd = executable_map.get(app_name.lower(), f"{app_name}.exe")
+            try:
+                proc = subprocess.Popen(cmd, shell=True)
+                logger.info(f"[BackendBridge] Real Windows Application Launched: '{cmd}' (pid={proc.pid})")
+            except Exception as launch_err:
+                logger.warning(f"[BackendBridge] Failed to launch '{cmd}': {launch_err}")
+
         try:
             goal_description = f"{spec.intent}: {spec.parameters}"
             goal = await self._bootstrap.goal_manager.create_goal(goal_description)

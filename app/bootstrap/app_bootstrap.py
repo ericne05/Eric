@@ -3,12 +3,13 @@ App Startup Bootstrap Lifecycle.
 Executable Host -> Splash Screen -> Load Config -> Init Kernel -> Init DI Container -> Init Runtimes -> Connect Backend.
 """
 
+import sys
 import asyncio
 from typing import Any, Dict, Optional
 from dotenv import load_dotenv
 
 from core.cognition import CognitiveCoordinator
-from core.desktop import MockDesktopAdapter
+from core.desktop import MockDesktopAdapter, WindowsDesktopAdapter
 from core.events.event_bus import EventBus
 from core.goals import GoalManager
 from core.runtime.capability import CapabilityNegotiator
@@ -26,7 +27,7 @@ class AppBootstrap:
         self.event_bus: Optional[EventBus] = None
         self.telemetry: Optional[TelemetryDashboard] = None
         self.negotiator: Optional[CapabilityNegotiator] = None
-        self.desktop_runtime: Optional[MockDesktopAdapter] = None
+        self.desktop_runtime: Optional[Any] = None
         self.vision_runtime: Optional[MockVisionAdapter] = None
         self.goal_manager: Optional[GoalManager] = None
         self.coordinator: Optional[CognitiveCoordinator] = None
@@ -39,7 +40,11 @@ class AppBootstrap:
         self.telemetry = TelemetryDashboard(self.event_bus)
 
         self.negotiator = CapabilityNegotiator()
-        self.desktop_runtime = MockDesktopAdapter(self.event_bus)
+        if sys.platform == "win32":
+            self.desktop_runtime = WindowsDesktopAdapter(self.event_bus)
+        else:
+            self.desktop_runtime = MockDesktopAdapter(self.event_bus)
+
         self.vision_runtime = MockVisionAdapter()
 
         await self.desktop_runtime.start()

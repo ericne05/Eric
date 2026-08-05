@@ -33,19 +33,19 @@ class IntentClassifier:
     # Patterns cho AGENT (yêu cầu hành động thực thi)
     _AGENT_PATTERNS = [
         # Tên phần mềm trực tiếp hoặc kèm từ nối
-        r"^(notepad|chrome|vscode|calc|calculator|word|excel|explorer|cmd|powershell)[\s\wáàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ]*$",
-        # Mở/Bật/Chạy ứng dụng
-        r"(mở|open|launch|chạy|start|khởi động|bật)\s+.+",
+        r"^(notepad|note|chrome|vscode|calc|calculator|word|excel|explorer|cmd|powershell)[\s\wáàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ]*$",
+        # Mở/Bật/Chạy ứng dụng (có dấu và không dấu)
+        r"(mở|mo|open|launch|chạy|chay|start|khởi động|khoi dong|bật|bat)\s+.+",
         # Tìm kiếm
-        r"(tìm kiếm|search|google|tìm|tra|lookup)\s+.+",
+        r"(tìm kiếm|tim kiem|search|google|tìm|tim|tra|lookup)\s+.+",
         # File operations
-        r"(tạo|create|xóa|delete|di chuyển|move|copy|sao chép)\s+(file|folder|thư mục|tệp)",
+        r"(tạo|tao|create|xóa|xoa|delete|di chuyển|move|copy|sao chép|sao chep)\s+(file|folder|thư mục|thu muc|tệp|tep)",
         # Điều hướng web
-        r"(vào|mở|navigate|truy cập)\s+(trang|website|web|url|http)",
+        r"(vào|vào|mở|mo|navigate|truy cập|truy cap)\s+(trang|website|web|url|http)",
         # Chụp màn hình
-        r"(chụp|screenshot|capture)\s*(màn hình)?",
+        r"(chụp|chup|screenshot|capture)\s*(màn hình|man hinh)?",
         # Gõ văn bản
-        r"(gõ|type|nhập|viết)\s+.+\s+(vào|trong|ở)",
+        r"(gõ|go|type|nhập|nhap|viết|viet)\s+.+\s+(vào|vào|trong|ở|o)",
     ]
 
     # Patterns cho QUESTION

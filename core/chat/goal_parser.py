@@ -43,7 +43,7 @@ class GoalParser:
         try:
             data: Dict[str, Any] = json.loads(json_str)
         except json.JSONDecodeError as e:
-            logger.warning(f"[GoalParser] JSON parse error: {e} | raw='{raw_output[:100]}'")
+            logger.debug(f"[GoalParser] Output is not valid JSON: {e} | raw='{raw_output[:100]}'")
             return None
 
         intent = data.get("intent", "").strip()

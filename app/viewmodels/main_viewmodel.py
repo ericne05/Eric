@@ -27,20 +27,24 @@ class MainViewModel:
     def _on_status_changed(self, new_status: str) -> None:
         self.current_status = new_status
 
-        # Update progress based on status
-        if new_status == "Thinking...":
+        # Update progress based on status (Vietnamese from BackendBridge)
+        status_lower = new_status.lower()
+        if "phân tích" in status_lower:
             self.goal_progress = 10.0
             self.is_processing = True
-        elif new_status == "Searching Knowledge...":
+        elif "suy nghĩ" in status_lower:
             self.goal_progress = 25.0
-        elif new_status == "Planning...":
-            self.goal_progress = 50.0
-        elif new_status == "Executing...":
-            self.goal_progress = 75.0
-        elif new_status == "Completed":
+            self.is_processing = True
+        elif "kế hoạch" in status_lower:
+            self.goal_progress = 40.0
+        elif "thực thi" in status_lower:
+            self.goal_progress = 60.0
+        elif "tổng hợp" in status_lower:
+            self.goal_progress = 85.0
+        elif "hoàn thành" in status_lower:
             self.goal_progress = 100.0
             self.is_processing = False
-        elif new_status == "Failed":
+        elif "thất bại" in status_lower:
             self.is_processing = False
 
     async def submit_prompt(self, prompt: str) -> ChatMessage:
