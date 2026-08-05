@@ -212,13 +212,13 @@ class BackendBridge:
         try:
             messages = PromptBuilder.build_response_synthesis(user_input, result.to_summary())
             llm_response = await self._llm_router.chat(messages, required_capability="chat")
-            if llm_response.content:
+            if llm_response.content and not llm_response.content.strip().startswith("{"):
                 return llm_response.content
         except Exception as e:
             logger.warning(f"[BackendBridge] Response synthesis failed: {e}")
         # Fallback
         if result.success:
-            return f"✓ Đã thực hiện '{user_input}' thành công ({result.duration_ms:.0f}ms)."
+            return f"✓ Đã thực hiện '{user_input}' thành công!"
         return f"❌ Không thể thực hiện '{user_input}': {result.error}"
 
     async def _handle_chat_fastpath(self, prompt: str, intent: IntentType) -> str:

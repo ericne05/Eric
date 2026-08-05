@@ -32,8 +32,10 @@ class IntentClassifier:
 
     # Patterns cho AGENT (yêu cầu hành động thực thi)
     _AGENT_PATTERNS = [
-        # Mở ứng dụng
-        r"(mở|open|launch|chạy|start|khởi động)\s+.+",
+        # Tên phần mềm trực tiếp hoặc kèm từ nối
+        r"^(notepad|chrome|vscode|calc|calculator|word|excel|explorer|cmd|powershell)[\s\wáàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ]*$",
+        # Mở/Bật/Chạy ứng dụng
+        r"(mở|open|launch|chạy|start|khởi động|bật)\s+.+",
         # Tìm kiếm
         r"(tìm kiếm|search|google|tìm|tra|lookup)\s+.+",
         # File operations
@@ -83,18 +85,7 @@ class IntentClassifier:
                     requires_llm=False,
                 )
 
-        # 2. Memory update
-        for pattern in self._memory_re:
-            if pattern.search(stripped):
-                return IntentClassification(
-                    intent=IntentType.MEMORY_UPDATE,
-                    confidence=0.85,
-                    reasoning="Pattern khớp với yêu cầu cập nhật bộ nhớ",
-                    requires_runtime=False,
-                    requires_llm=True,
-                )
-
-        # 3. Agent request (hành động thực thi)
+        # 2. Agent request (hành động thực thi)
         for pattern in self._agent_re:
             if pattern.search(stripped):
                 return IntentClassification(
@@ -102,6 +93,17 @@ class IntentClassifier:
                     confidence=0.88,
                     reasoning="Pattern khớp với yêu cầu hành động thực thi",
                     requires_runtime=True,
+                    requires_llm=True,
+                )
+
+        # 3. Memory update
+        for pattern in self._memory_re:
+            if pattern.search(stripped):
+                return IntentClassification(
+                    intent=IntentType.MEMORY_UPDATE,
+                    confidence=0.85,
+                    reasoning="Pattern khớp với yêu cầu cập nhật bộ nhớ",
+                    requires_runtime=False,
                     requires_llm=True,
                 )
 
