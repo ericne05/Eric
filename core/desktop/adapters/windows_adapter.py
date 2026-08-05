@@ -22,6 +22,8 @@ from core.desktop.interfaces import (
 from core.desktop.models import AdapterHealth, DesktopActionResult, RuntimeCapabilityRegistry, WindowInfo
 from core.events.event import Event
 from core.events.event_bus import EventBus
+from core.runtime.capability import CapabilityRegistry
+from core.runtime.interfaces import IRuntimeCapability
 
 
 class WindowsUI(IDesktopUI):
@@ -380,3 +382,33 @@ class WindowsDesktopAdapter(IDesktopRuntime):
             screenshot_ok=True,
             window_ok=True,
         )
+
+    # ── IRuntime compatibility (CapabilityNegotiator & CognitiveCoordinator) ──
+
+    def get_runtime_capabilities(self) -> IRuntimeCapability:
+        return CapabilityRegistry({
+            "mouse": True,
+            "keyboard": True,
+            "window": True,
+            "screenshot": True,
+            "clipboard": True,
+            "notification": True,
+            "system_power": True,
+            "ocr": False,
+            "vision": False,
+        })
+
+    def get_health(self) -> dict:
+        return {"state": self._state.value, "mouse_ok": True, "keyboard_ok": True}
+
+    async def observe(self) -> dict:
+        return {"state": self._state.value}
+
+    async def plan(self, goal: str, observation: dict) -> list:
+        return [{"action": "execute_goal", "goal": goal}]
+
+    async def execute(self, plan: list) -> dict:
+        return {"success": True, "actions_executed": len(plan) if isinstance(plan, list) else 1}
+
+    async def recover(self, error: Exception, context: dict) -> dict:
+        return {"state": "recovered"}

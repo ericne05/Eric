@@ -182,30 +182,41 @@ class BackendBridge:
         import subprocess
         start = time.time()
 
-        # Thực thi mở ứng dụng thật sự trên hệ thống Windows
-        if spec.intent == "launch_application":
-            app_name = str(spec.parameters.get("application", spec.parameters.get("name", "notepad"))).strip()
-            executable_map = {
-                "notepad": "notepad.exe",
-                "note": "notepad.exe",
-                "ghi chú": "notepad.exe",
-                "chrome": "chrome.exe",
-                "calc": "calc.exe",
-                "máy tính": "calc.exe",
-                "calculator": "calc.exe",
-                "word": "winword.exe",
-                "winword": "winword.exe",
-                "excel": "excel.exe",
-                "vscode": "code.cmd",
-                "code": "code.cmd",
-                "explorer": "explorer.exe",
+        # Thực thi mở ứng dụng/trang web thật sự trên hệ thống Windows
+        if spec.intent in ("launch_application", "web_search", "navigate_web"):
+            app_name = str(spec.parameters.get("application", spec.parameters.get("query", spec.parameters.get("name", "notepad")))).strip().lower()
+            
+            # Map typos & common aliases
+            alias_map = {
+                "chorme": "chrome",
+                "chorm": "chrome",
+                "chrom": "chrome",
+                "google chrome": "chrome",
+                "note": "notepad",
+                "ghi chú": "notepad",
+                "máy tính": "calc",
+                "calculator": "calc",
+                "word": "winword",
+                "excel": "excel",
+                "code": "code",
+                "vscode": "code",
+                "tab youtube": "https://www.youtube.com",
+                "youtube": "https://www.youtube.com",
             }
-            cmd = executable_map.get(app_name.lower(), f"{app_name}.exe")
+            clean_target = alias_map.get(app_name, app_name)
+            
             try:
-                proc = subprocess.Popen(cmd, shell=True)
-                logger.info(f"[BackendBridge] Real Windows Application Launched: '{cmd}' (pid={proc.pid})")
+                # Use start via cmd /c to let Windows App Paths / Shell Protocol handle launch
+                if clean_target.startswith("http://") or clean_target.startswith("https://"):
+                    import webbrowser
+                    webbrowser.open(clean_target)
+                    logger.info(f"[BackendBridge] Opened Browser URL: '{clean_target}'")
+                else:
+                    cmd = f'start "" "{clean_target}"'
+                    proc = subprocess.Popen(cmd, shell=True)
+                    logger.info(f"[BackendBridge] Real Windows App Launched: {cmd}")
             except Exception as launch_err:
-                logger.warning(f"[BackendBridge] Failed to launch '{cmd}': {launch_err}")
+                logger.warning(f"[BackendBridge] Failed to launch '{clean_target}': {launch_err}")
 
         try:
             goal_description = f"{spec.intent}: {spec.parameters}"
