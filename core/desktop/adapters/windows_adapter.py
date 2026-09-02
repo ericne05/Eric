@@ -309,6 +309,48 @@ class WindowsSystem(IDesktopSystem):
     async def set_volume(self, level_percent: int) -> bool:
         return True
 
+    async def launch_application(self, target: str) -> bool:
+        """Safely launch application or URL without shell=True."""
+        try:
+            import os
+            clean_target = str(target).strip()
+            if not clean_target:
+                return False
+
+            alias_map = {
+                "chorme": "chrome",
+                "chorm": "chrome",
+                "chrom": "chrome",
+                "google chrome": "chrome",
+                "note": "notepad",
+                "ghi chú": "notepad",
+                "máy tính": "calc",
+                "calculator": "calc",
+                "word": "winword",
+                "excel": "excel",
+                "code": "code",
+                "vscode": "code",
+                "tab youtube": "https://www.youtube.com",
+                "youtube": "https://www.youtube.com",
+            }
+            clean_target = alias_map.get(clean_target.lower(), clean_target)
+
+            if clean_target.startswith("http://") or clean_target.startswith("https://"):
+                import webbrowser
+                webbrowser.open(clean_target)
+                return True
+
+            if hasattr(os, "startfile"):
+                os.startfile(clean_target)
+                return True
+            else:
+                import subprocess
+                subprocess.Popen(["cmd", "/c", "start", "", clean_target], shell=False)
+                return True
+        except Exception:
+            return False
+
+
 
 class WindowsDesktopAdapter(IDesktopRuntime):
     """Native Product-Grade Windows Desktop Adapter."""
@@ -404,11 +446,34 @@ class WindowsDesktopAdapter(IDesktopRuntime):
     async def observe(self) -> dict:
         return {"state": self._state.value}
 
-    async def plan(self, goal: str, observation: dict) -> list:
-        return [{"action": "execute_goal", "goal": goal}]
-
     async def execute(self, plan: list) -> dict:
-        return {"success": True, "actions_executed": len(plan) if isinstance(plan, list) else 1}
+        if not isinstance(plan, list):
+            plan = [plan]
+        executed_count = 0
+        results = []
+        for step in plan:
+            if isinstance(step, dict):
+                action = step.get("action", "")
+                if action == "click":
+                    res = await self._ui.click(step.get("x", 0), step.get("y", 0))
+                    results.append(res)
+                elif action == "type_text":
+                    res = await self._ui.type_text(step.get("text", ""))
+                    results.append(res)
+                elif action == "hotkey":
+                    res = await self._ui.hotkey(*step.get("keys", []))
+                    results.append(res)
+                elif action in ("launch", "launch_application", "launch_app", "open"):
+                    target = step.get("target") or step.get("application") or step.get("name") or step.get("url") or ""
+                    res = await self._system.launch_application(target)
+                    results.append(res)
+                else:
+                    results.append(True)
+                executed_count += 1
+            else:
+                executed_count += 1
+                results.append(True)
+        return {"success": True, "actions_executed": executed_count, "results": results}
 
     async def recover(self, error: Exception, context: dict) -> dict:
         return {"state": "recovered"}

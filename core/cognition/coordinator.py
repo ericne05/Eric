@@ -51,6 +51,13 @@ class CognitiveCoordinator(ICognitiveCoordinator):
         if not context.goal:
             return CognitionResult(success=False, agent_role=AgentRole.COORDINATOR, error="No goal provided in SharedCognitiveContext")
 
+        from core.goals.enums import GoalState
+        if context.goal.state == GoalState.PAUSED:
+            return CognitionResult(success=False, agent_role=AgentRole.COORDINATOR, error="Goal is paused")
+        if context.goal.state == GoalState.CANCELLED:
+            return CognitionResult(success=False, agent_role=AgentRole.COORDINATOR, error="Goal is cancelled")
+
+        context.goal.state = GoalState.RUNNING
         ordered_agents = self._policy.select_execution_order(self._agents)
 
         # 1. Knowledge Phase
@@ -62,6 +69,7 @@ class CognitiveCoordinator(ICognitiveCoordinator):
         res_plan = await self._planning_agent.process_message(msg_plan, context)
 
         if not res_plan.success:
+            context.goal.state = GoalState.FAILED
             return res_plan
 
         # 3. Execution Phase
@@ -69,6 +77,7 @@ class CognitiveCoordinator(ICognitiveCoordinator):
         res_exec = await self._execution_agent.process_message(msg_exec, context)
 
         if res_exec.success:
+            context.goal.state = GoalState.COMPLETED
             # Attach GoalResult
             context.goal.result = GoalResult(success=True, goal_id=context.goal.id, summary="Executed via Cognitive Coordination Layer")
             return res_exec
@@ -84,6 +93,12 @@ class CognitiveCoordinator(ICognitiveCoordinator):
 
         if res_rec.success and res_rec.data and res_rec.data.get("decision") == "replan":
             # Retry execution phase with replanned plan
-            return await self._execution_agent.process_message(msg_exec, context)
+            retry_res = await self._execution_agent.process_message(msg_exec, context)
+            if retry_res.success:
+                context.goal.state = GoalState.COMPLETED
+            else:
+                context.goal.state = GoalState.FAILED
+            return retry_res
 
+        context.goal.state = GoalState.FAILED
         return res_rec

@@ -18,3 +18,8 @@ class SystemState(Enum):
     SHUTTING_DOWN = auto()  # Graceful shutdown in progress
     STOPPED = auto()        # All resources released, process can exit
     FAILED = auto()         # System encountered an unrecoverable error
+
+
+class StateTransitionError(RuntimeError):
+    """Raised when an invalid system state transition is attempted."""
+    pass

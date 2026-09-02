@@ -178,54 +178,9 @@ class BackendBridge:
         return msg
 
     async def _execute_spec(self, spec: ParsedGoalSpec, original_prompt: str) -> ExecutionResult:
-        """Chuyển ParsedGoalSpec sang GoalManager và thực thi."""
+        """Chuyển ParsedGoalSpec sang GoalManager và CognitiveCoordinator để thực thi qua Core Runtime."""
         import time
-        import subprocess
         start = time.time()
-
-        # Thực thi mở ứng dụng/trang web thật sự trên hệ thống Windows
-        if spec.intent in ("launch_application", "web_search", "navigate_web"):
-            raw_param = spec.parameters.get("application", spec.parameters.get("query", spec.parameters.get("name", spec.parameters.get("url", "notepad"))))
-            app_name = str(raw_param).strip().lower()
-            
-            # Map typos & common aliases
-            alias_map = {
-                "chorme": "chrome",
-                "chorm": "chrome",
-                "chrom": "chrome",
-                "google chrome": "chrome",
-                "note": "notepad",
-                "ghi chú": "notepad",
-                "máy tính": "calc",
-                "calculator": "calc",
-                "word": "winword",
-                "excel": "excel",
-                "code": "code",
-                "vscode": "code",
-                "tab youtube": "https://www.youtube.com",
-                "youtube": "https://www.youtube.com",
-            }
-            clean_target = alias_map.get(app_name, app_name)
-
-            # An toàn: Bỏ qua nếu tham số chứa chuỗi lỗi prompt hoặc quá dài
-            invalid_keywords = ["json", "không hợp lệ", "bắt buộc", "schema", "khởi tạo"]
-            is_invalid = any(kw in clean_target.lower() for kw in invalid_keywords) or len(clean_target) > 80 or "\n" in clean_target
-
-            if not is_invalid and clean_target:
-                try:
-                    # Use start via cmd /c to let Windows App Paths / Shell Protocol handle launch
-                    if clean_target.startswith("http://") or clean_target.startswith("https://"):
-                        import webbrowser
-                        webbrowser.open(clean_target)
-                        logger.info(f"[BackendBridge] Opened Browser URL: '{clean_target}'")
-                    else:
-                        cmd = f'start "" "{clean_target}"'
-                        proc = subprocess.Popen(cmd, shell=True)
-                        logger.info(f"[BackendBridge] Real Windows App Launched: {cmd}")
-                except Exception as launch_err:
-                    logger.warning(f"[BackendBridge] Failed to launch '{clean_target}': {launch_err}")
-            else:
-                logger.warning(f"[BackendBridge] Bỏ qua lệnh launch không hợp lệ: '{clean_target[:40]}'")
 
         try:
             goal_description = f"{spec.intent}: {spec.parameters}"

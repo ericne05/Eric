@@ -21,43 +21,43 @@ Tạo dựng một trợ lý AI mạnh mẽ có khả năng đồng hành lâu d
 
 ---
 
-## 3. Architecture (Kiến trúc hệ thống)
+## 3. Architecture (Kiến trúc hệ thống v1.0 RC)
 
 ### Nguyên tắc nền tảng (Foundation Rule)
-> **Brain không được gọi trực tiếp bất kỳ Agent nào.**
+> **LLM không bao giờ trực tiếp thực thi các lệnh hệ điều hành hay shell script.**
 
-Mọi yêu cầu từ người dùng đều phải đi qua một luồng dữ liệu một chiều nghiêm ngặt. Điều này giúp giảm độ liên kết (decoupling), dễ dàng thử nghiệm, và cho phép thay thế hoặc nâng cấp bất kỳ Agent nào mà không ảnh hưởng tới logic suy luận của Brain.
+Mọi yêu cầu từ người dùng đều phải đi qua luồng điều hướng và trừu tượng hóa nghiêm ngặt:
 
-### Luồng xử lý hành động (Action Dispatch Flow)
 ```text
-User (Người dùng)
+User Input (Người dùng)
    ↓
-Desktop UI (Giao diện ứng dụng)
+App Shell / UI
    ↓
-Brain (Bộ não / Bộ suy luận)
+IntentClassifier & LLMRouter
    ↓
-Planner (Bộ lập kế hoạch tác vụ)
+Structured GoalSpecification
    ↓
-Action Dispatcher (Bộ điều phối hành động)
+GoalManager & CognitiveCoordinator
    ↓
-Tool Registry (Đăng ký & Quản lý Công cụ)
+CapabilityNegotiator
    ↓
-Agent (Thành phần thực thi: Browser, Windows, File...)
+Runtime Adapters (Windows Desktop, Playwright Browser, Local Vision)
    ↓
-Result (Kết quả thực thi trả về)
+Operating System / Browser / OCR
    ↓
-Memory (Bộ nhớ lưu vết ngữ cảnh)
+Execution Result & Memory / Knowledge Graph
 ```
 
 ---
 
 ## 4. Tech Stack (Công nghệ sử dụng)
-* **Core & Logic AI**: Python / Node.js (TypeScript) - Tùy thuộc vào yêu cầu hiệu năng và tính tích hợp.
-* **Desktop UI & Launcher**: Electron / Tauri (HTML, CSS, TypeScript) hỗ trợ chạy nền và khởi động cùng hệ thống.
-* **Local Databases**: SQLite (Dữ liệu quan hệ & Bộ nhớ ngữ cảnh) kết hợp ChromaDB / Qdrant (Bộ nhớ vector).
-* **Giao thức kết nối**: Model Context Protocol (MCP) làm chuẩn giao tiếp chính giữa Server và các Agents/Tools.
-
----
+* **Core & Logic AI**: Python 3.10+ (Asyncio, Pydantic, YAML)
+* **LLM Integration**: Google GenAI Client SDK (Gemini 2.0 Flash), OpenAI, Anthropic Claude with Multi-Provider Failover Router
+* **Desktop Automation**: PyAutoGUI, Windows CTypes SendInput, win32gui, MSS Screenshot Engine
+* **Browser Automation**: Async Playwright Chromium
+* **Vision & OCR**: Pytesseract OCR, PIL Semantic Screen Graph
+* **Local Storage & Memory**: SQLite (Long-term Memory & Knowledge Graph), FIFO Short-term Buffer, In-memory Vector Store
+* **Desktop Host & Client**: Native Python Application Shell, Command Palette, Session Manager
 
 ## 5. Folder Structure (Cấu trúc thư mục)
 Cấu trúc thư mục của Eric tuân theo mô hình phân rã chức năng nghiêm ngặt:

@@ -8,7 +8,6 @@ a = Analysis(
     binaries=[],
     datas=[
         ('configs', 'configs'),
-        ('.env', '.'),
     ],
     hiddenimports=[
         'google.genai',

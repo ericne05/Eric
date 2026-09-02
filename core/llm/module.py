@@ -47,7 +47,11 @@ class LLMSystemModule(IDependencyModule):
         
         # Providers
         def _provider_factory(c):
-            return DummyProvider(mapper=c.resolve(IToolSchemaMapper))
+            try:
+                from core.llm.providers.gemini import GeminiProvider
+                return GeminiProvider()
+            except Exception:
+                return DummyProvider(mapper=c.resolve(IToolSchemaMapper))
         container.add_singleton(ILLMProvider, _provider_factory)
 
         # Telemetry is provided by ToolSystemModule, but we can resolve it

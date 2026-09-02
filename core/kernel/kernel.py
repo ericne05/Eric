@@ -14,7 +14,7 @@ Design decisions (see Decision-Log.md):
 from core.config import SystemConfig
 from core.di import Container
 from core.events import Event, EventBus
-from core.kernel.lifecycle import SystemState
+from core.kernel.lifecycle import StateTransitionError, SystemState
 from core.logger import ILogger
 
 

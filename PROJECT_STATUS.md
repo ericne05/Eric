@@ -1,7 +1,7 @@
 # PROJECT_STATUS — Eric Personal AI Agent OS
 
 > **Trạng thái Dự án (Single Source of Live Status)**  
-> *Được cập nhật tự động sau mỗi Sprint.*
+> *Cập nhật sau Sprint 17.5 Architectural Reconciliation & Hardening.*
 
 ---
 
@@ -9,37 +9,50 @@
 
 | Tiêu chí | Trạng thái Hiện tại |
 |---|---|
-| **Phase Hiện Tại** | Phase 1 — Core Runtime |
-| **Sprint Đang Thực Hiện** | **Sprint 7 — Dynamic Plugin Loader** (Chuẩn bị triển khai) |
-| **Nhánh Git Đang Làm Việc** | `feature/sprint-6-memory-engine` |
-| **Python Version** | 3.14.6 (`.venv/`) |
-| **Tổng Số Unit Tests** | **105/105 PASSED** (`pytest tests/ -v`) |
-| **Test Coverage** | ≥90% |
-| **Nợ Kỹ Thuật (Tech Debt)** | 0 |
+| **Phase Hiện Tại** | Phase 1 — v1.0 RC1 Release Candidate |
+| **Sprint Đã Hoàn Thành** | **Sprint 17.5 — Reconciliation & Hardening** |
+| **Sprint Tiếp Theo** | **Sprint 18 — Desktop Companion & System Integration** |
+| **Nhánh Git Chính** | `main` (Synced with `develop` at commit `dd78fd9`) |
+| **Python Version** | 3.10+ / 3.14 (`.venv/`) |
+| **Bộ Test Suite** | **368+ PASSED (41 test files)** (`pytest tests/ -v`) |
+| **Test Coverage** | ~85% core coverage |
+| **Nợ Kỹ Thuật (Tech Debt)** | Đã giải quyết trong Sprint 17.5 (Loại bỏ .env khỏi PyInstaller, loại bỏ shell=True, tích hợp AppBootstrap với Kernel) |
 | **Known Issues** | 0 |
-| **Breaking Changes** | 0 |
+| **Security Status** | Hardened (Bảo mật PyInstaller spec, an toàn ứng dụng subprocess execution) |
 
 ---
 
-## 🏃 Lộ Trình Sprint Phase 1
+## 🏃 Lộ Trình Sprint đã hoàn thành (Sprints 1–17.5)
 
-- [x] **Sprint 1 — Python Setup + Kernel Core** *(Hoàn thành: 17 tests)*
-- [x] **Sprint 2 — Event Bus System (ADR-004)** *(Hoàn thành: 34 tests)*
-- [x] **Sprint 3 — Enterprise Logger Module (ILogger)** *(Hoàn thành: 39 tests)*
-- [x] **Sprint 4 — Config Loader Nâng Cao (Schemas & Type-safe Config)** *(Hoàn thành: 50 tests)*
-- [x] **Sprint 5 — Dependency Injection Container** *(Hoàn thành: 80 tests)*
-- [x] **Sprint 6 — Memory Engine** *(Hoàn thành: 105 tests)*
-- [ ] **Sprint 7 — Dynamic Plugin Loader** *(TIẾP THEO)*
+- [x] **Sprint 1 — Kernel & System Lifecycle**
+- [x] **Sprint 2 — Event Bus System (ADR-004)**
+- [x] **Sprint 3 — Enterprise Logger Module (ILogger)**
+- [x] **Sprint 4 — Config Loader (Schemas & Type-safe Config)**
+- [x] **Sprint 5 — Dependency Injection Container**
+- [x] **Sprint 6 — Multi-tier Memory Engine**
+- [x] **Sprint 7 — Dynamic Plugin Loader**
+- [x] **Sprint 8 — Agent Runtime & ReAct Loop**
+- [x] **Sprint 9 — Tool Calling & Registry**
+- [x] **Sprint 10 — Multi-Provider LLM Router**
+- [x] **Sprint 11.5 — Browser Runtime Hardening**
+- [x] **Sprint 12.5 — Native Windows Desktop Integration**
+- [x] **Sprint 13 — Vision Runtime & Screen Graph**
+- [x] **Sprint 14 — Goal Manager & Autonomous Planning**
+- [x] **Sprint 14.5 — Hardening & E2E Scenarios**
+- [x] **Sprint 15 — Knowledge Graph & Experience Engine**
+- [x] **Sprint 16 — Cognitive Coordination Layer**
+- [x] **Sprint 17 — Desktop Client App Shell & Session UI**
+- [x] **Sprint 17.5 — Reconciliation & Hardening (Current)**
 
 ---
 
 ## 🔒 Cấu Trúc Nền Tảng Đã Đóng Băng (Architecture Freeze)
 
-Các module nền tảng sau đã hoàn thành, kiểm thử 100% và **ĐÓNG BĂNG (FREEZE)** — không tự ý sửa đổi API công khai trừ khi người dùng yêu cầu:
+1. **Kernel & DI (`core/kernel/`, `core/di/`)**: Điều phối vòng đời 6 trạng thái và tiêm phụ thuộc qua Container.
+2. **Event Bus (`core/events/`)**: Pub/Sub bất đồng bộ, pattern matching (`system.*`, `*`).
+3. **Multi-Runtime Engine (`core/desktop/`, `core/browser/`, `core/vision/`)**: Trừu tượng hóa hoàn toàn mọi thao tác hệ điều hành, trình duyệt và OCR.
+4. **Cognitive Coordination & Goals (`core/cognition/`, `core/goals/`)**: Lập kế hoạch DAG, điều phối 4 cognitive agents, quản lý trạng thái GoalState.
 
-1. **Kernel (`core/kernel/`)**: Điều phối vòng đời 6 trạng thái (`CREATED` → `BOOTING` → `READY` → `RUNNING` → `SHUTTING_DOWN` → `STOPPED`).
-2. **Event Bus (`core/events/`)**: Pub/Sub bất đồng bộ, pattern matching (`system.*`, `*`), `Event` bất biến (`frozen=True`), cô lập exception.
-3. **Logger (`core/logger/`)**: Phân tách interface `ILogger`, `LoggerManager`, `setup_logger`, nạp sinks từ YAML, structured logging (`bind`), logger "câm" không emit events.
 
 ---
 

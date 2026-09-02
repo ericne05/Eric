@@ -34,9 +34,10 @@ class AppBootstrap:
         self.is_bootstrapped: bool = False
 
     async def initialize(self) -> Dict[str, Any]:
-        """Runs the full startup sequence."""
-        load_dotenv()
-        self.event_bus = EventBus()
+        """Runs the full startup sequence through Kernel and DI Container."""
+        from core.kernel.bootstrap import bootstrap
+        self.kernel = bootstrap()
+        self.event_bus = self.kernel.event_bus or EventBus()
         self.telemetry = TelemetryDashboard(self.event_bus)
 
         self.negotiator = CapabilityNegotiator()
