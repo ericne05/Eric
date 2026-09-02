@@ -90,6 +90,43 @@ class LLMSystemModule(IDependencyModule):
             )
         container.add_singleton(ILLMService, _service_factory)
 
-        # Initialize default model
+        # Initialize model registry: real provider default preferred, dummy as fallback only
         registry = container.resolve(IModelRegistry)
-        registry.register(ModelConfig(name="dummy-v1", provider="dummy"), is_default=True)
+        has_real_provider = False
+        try:
+            from core.llm.providers.gemini import GeminiProvider
+            registry.register(
+                ModelConfig(name=GeminiProvider.DEFAULT_MODEL, provider="gemini"),
+                is_default=True,
+            )
+            has_real_provider = True
+        except Exception:
+            pass
+
+        try:
+            from core.llm.providers.openai_provider import OpenAIProvider
+            registry.register(
+                ModelConfig(name=OpenAIProvider.DEFAULT_MODEL, provider="openai"),
+                is_default=not has_real_provider,
+            )
+            if not has_real_provider:
+                has_real_provider = True
+        except Exception:
+            pass
+
+        try:
+            from core.llm.providers.claude_provider import ClaudeProvider
+            registry.register(
+                ModelConfig(name=ClaudeProvider.DEFAULT_MODEL, provider="claude"),
+                is_default=not has_real_provider,
+            )
+            if not has_real_provider:
+                has_real_provider = True
+        except Exception:
+            pass
+
+        # DummyProvider model registered as explicit test/dev fallback, never implicit default when real provider exists
+        registry.register(
+            ModelConfig(name="dummy-v1", provider="dummy"),
+            is_default=not has_real_provider,
+        )

@@ -498,3 +498,34 @@ class TestLLMRoutingAuthority:
         # DummyProvider must be registered as a fallback (last)
         providers = router.get_available_providers()
         assert any(p.name == "dummy" for p in providers), "DummyProvider must be registered as fallback"
+
+    @pytest.mark.asyncio
+    async def test_default_model_registry_prefers_real_provider_over_dummy(self):
+        """ModelRegistry default model must prefer real providers (Gemini) and not dummy-v1."""
+        from core.llm.module import LLMSystemModule
+        from core.di.container import Container
+        from core.llm.interfaces import IModelRegistry, IToolSchemaMapper
+        from core.llm.providers.dummy import DummyToolMapper
+        from core.telemetry.interfaces import ITelemetryManager
+        from core.logger.interface import ILogger
+        from core.llm.providers.gemini import GeminiProvider
+
+        container = Container()
+        container.register_instance(IToolSchemaMapper, DummyToolMapper())
+        container.register_instance(ITelemetryManager, MagicMock())
+        container.register_instance(ILogger, MagicMock())
+
+        LLMSystemModule().register(container)
+
+        registry = container.resolve(IModelRegistry)
+        default_model = registry.get_default_model()
+
+        # Default production model must NOT be dummy
+        assert default_model.provider != "dummy", f"Default model provider should not be 'dummy', got '{default_model.provider}'"
+        assert default_model.provider == "gemini"
+        assert default_model.name == GeminiProvider.DEFAULT_MODEL
+
+        # Dummy model is still registered for explicit test/dev fallback
+        dummy_model = registry.get_model("dummy-v1")
+        assert dummy_model is not None
+        assert dummy_model.provider == "dummy"
