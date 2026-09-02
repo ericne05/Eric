@@ -1,0 +1,10 @@
+# Desktop Subsystem Configuration
+desktop:
+  runtime:
+    adapter: "windows"  # Options: 'windows', 'mock'
+    sandbox: false      # Dry-run mode: Log actions without executing physical inputs
+    failsafe: true      # PyAutoGUI mouse corner emergency stop
+  retry:
+    strategy: "exponential" # Options: 'fixed', 'linear', 'exponential'
+    max_retries: 3
+    base_delay_seconds: 1.0

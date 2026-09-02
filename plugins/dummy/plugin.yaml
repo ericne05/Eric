@@ -1,0 +1,10 @@
+name: dummy
+version: 1.0.0
+api_version: 1
+author: Eric Team
+description: A dummy plugin for testing the dynamic loader.
+entry: dummy.main:DummyPlugin
+priority: 10
+enabled: true
+dependencies: []
+permissions: []
