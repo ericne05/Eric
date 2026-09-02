@@ -449,31 +449,56 @@ class WindowsDesktopAdapter(IDesktopRuntime):
     async def execute(self, plan: list) -> dict:
         if not isinstance(plan, list):
             plan = [plan]
+
+        if not plan:
+            return {"success": True, "actions_executed": 0, "results": []}
+
         executed_count = 0
         results = []
+        overall_success = True
+
         for step in plan:
             if isinstance(step, dict):
                 action = step.get("action", "")
                 if action == "click":
                     res = await self._ui.click(step.get("x", 0), step.get("y", 0))
-                    results.append(res)
                 elif action == "type_text":
                     res = await self._ui.type_text(step.get("text", ""))
-                    results.append(res)
                 elif action == "hotkey":
                     res = await self._ui.hotkey(*step.get("keys", []))
-                    results.append(res)
                 elif action in ("launch", "launch_application", "launch_app", "open"):
                     target = step.get("target") or step.get("application") or step.get("name") or step.get("url") or ""
-                    res = await self._system.launch_application(target)
-                    results.append(res)
+                    launch_res = await self._system.launch_application(target)
+                    if isinstance(launch_res, DesktopActionResult):
+                        res = launch_res
+                    else:
+                        res = DesktopActionResult(
+                            success=bool(launch_res),
+                            error=None if launch_res else f"Failed to launch: '{target}'",
+                        )
                 else:
-                    results.append(True)
-                executed_count += 1
+                    res = DesktopActionResult(
+                        success=False,
+                        error=f"Unsupported desktop action: '{action}'",
+                    )
             else:
-                executed_count += 1
-                results.append(True)
-        return {"success": True, "actions_executed": executed_count, "results": results}
+                res = DesktopActionResult(
+                    success=False,
+                    error=f"Invalid plan step (not a dict): {step!r}",
+                )
+
+            results.append(res)
+            executed_count += 1
+
+            # Aggregate: if any action fails, overall fails
+            if isinstance(res, DesktopActionResult) and not res.success:
+                overall_success = False
+
+        return {
+            "success": overall_success,
+            "actions_executed": executed_count,
+            "results": results,
+        }
 
     async def recover(self, error: Exception, context: dict) -> dict:
         return {"state": "recovered"}

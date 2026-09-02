@@ -100,11 +100,11 @@
 Full test suite run after all Sprint 17.5 changes:
 
 ```
-Total:    274
-Passed:   274
+Total:    296
+Passed:   296
 Failed:   0
 Skipped:  0
-Duration: 78.29s (1:18)
+Duration: 51.81s
 Coverage: Not measured (coverage not configured in CI run)
 ```
 
@@ -170,20 +170,43 @@ Secret scan on staged diff: **PASS** (no API keys, tokens, or `.env` values in a
 ## 16. Git Commit
 
 ```
-fix: reconcile v1.0 architecture and harden runtime boundaries
+fix: finalize sprint 17.5 architecture hardening
 ```
 
-Changed files (14):
-- `PROJECT_STATUS.md`
-- `README.md`
+Changed files:
 - `app/bootstrap/app_bootstrap.py`
-- `app/services/backend_bridge.py`
-- `core/cognition/coordinator.py`
 - `core/desktop/adapters/windows_adapter.py`
+- `core/goals/decomposition.py`
+- `core/goals/models.py`
+- `core/goals/planner.py`
 - `core/kernel/kernel.py`
-- `core/kernel/lifecycle.py`
 - `core/llm/module.py`
-- `docs/ARCHITECTURE_RECONCILIATION_REPORT.md` (NEW)
-- `docs/SPRINT_17_5_IMPLEMENTATION_REPORT.md` (NEW)
-- `eric.spec`
-- `tests/unit/test_sprint17_5_reconciliation.py` (NEW)
+- `core/llm/service.py`
+- `core/runtime/module.py` (NEW)
+- `docs/SPRINT_17_5_IMPLEMENTATION_REPORT.md`
+- `tests/unit/test_llm.py`
+- `tests/unit/test_sprint17_5_hardening.py` (NEW)
+
+---
+
+## 17. Final Hardening Pass Verification
+
+1. **Fix #1 — AppBootstrap / DI Integration:**
+   - Registered `RuntimeModule` in Kernel's `_init_container()`.
+   - `AppBootstrap` resolves `EventBus`, `CapabilityNegotiator`, `DesktopRuntime`, `VisionRuntime`, `GoalManager`, `CognitiveCoordinator` from the single `Kernel.container`. No duplicate service instances.
+
+2. **Fix #2 — Desktop Execution Failure Propagation:**
+   - `WindowsDesktopAdapter.execute()` returns `overall_success=False` if any single action fails or is unsupported.
+   - Unknown actions return explicit `DesktopActionResult(success=False, error="Unsupported desktop action: ...")`.
+   - Empty plan `execute([])` returns `{"success": True, "actions_executed": 0, "results": []}`.
+
+3. **Fix #3 — GoalSpecification Parameter Preservation:**
+   - Added `parameters: Dict[str, Any]` to `GoalSpecification`.
+   - `GoalDecomposer` preserves `spec.intent` and `spec.parameters` in `SubGoal.result_data`.
+   - `AutonomousGoalPlanner.build_plan()` merges `subgoal.result_data` into `ExecutionStep.arguments`.
+   - End-to-end test verifies parameters reach the Runtime action payload.
+
+4. **Fix #4 — Single LLM Routing Authority:**
+   - `LLMRouter` registered as singleton in DI (`LLMSystemModule`).
+   - `LLMService` delegates all provider generation calls directly to `LLMRouter.chat()`.
+   - `LLMRouter` owns all provider selection and failover logic. `DummyProvider` acts as fallback ONLY.

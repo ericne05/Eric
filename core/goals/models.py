@@ -41,6 +41,7 @@ class GoalSpecification:
     priority: GoalPriority = GoalPriority.NORMAL
     success_criteria: List[SuccessCriterion] = field(default_factory=list)
     constraints: Dict[str, Any] = field(default_factory=dict)
+    parameters: Dict[str, Any] = field(default_factory=dict)  # Structured action parameters (e.g. {"application": "notepad"})
     expected_result: Any = None
     timeout_seconds: int = 300
     metadata: Dict[str, Any] = field(default_factory=dict)

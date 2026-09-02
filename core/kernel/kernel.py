@@ -159,6 +159,8 @@ class Kernel:
         from core.llm.module import LLMSystemModule
         LLMSystemModule().register(self._container)
         AgentSystemModule().register(self._container)
+        from core.runtime.module import RuntimeModule
+        RuntimeModule().register(self._container)
 
         self._log("[Kernel] DI Container initialized.")
 

@@ -81,11 +81,14 @@ class GoalDecomposer:
                 description="Capture screen and active windows",
                 capability_requirement=CapabilityRequirement(required=["screenshot"], preferred=["desktop", "vision"]),
             )
+            # Use spec.intent as the action name and preserve spec.parameters as result_data
+            action_title = spec.intent if spec.intent else "execute_desktop_action"
             sg_interact = SubGoal(
                 id="sg_interact",
-                title="Execute Desktop Action",
-                description="Perform mouse/keyboard action on active window",
+                title=action_title,
+                description=spec.description or spec.intent,
                 capability_requirement=CapabilityRequirement(required=["mouse"], preferred=["desktop"]),
+                result_data=dict(spec.parameters) if spec.parameters else {},
             )
 
             graph.add_subgoal(sg_observe)

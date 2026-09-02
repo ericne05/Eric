@@ -93,21 +93,32 @@ def test_dummy_provider_cancellation():
 def test_llm_service_budget_enforcement():
     registry = InMemoryModelRegistry()
     registry.register(ModelConfig(name="dummy", provider="dummy"), is_default=True)
-    
-    budget = TokenBudgetManager(max_tokens_per_thread=20) # Low budget
+
+    budget = TokenBudgetManager(max_tokens_per_thread=20)  # Low budget
     mapper = DummyToolMapper()
     provider = DummyProvider(mapper)
-    
+
+    # Wire provider through LLMRouter (the new routing authority)
+    from core.llm.router import LLMRouter
+    router = LLMRouter()
+    router.register("dummy", provider, priority=10)
+
     class MockLogger:
         def info(self, msg): pass
         def debug(self, msg): pass
         def warning(self, msg): pass
         def error(self, msg): pass
-        
-    service = LLMService(provider, registry, budget, InMemoryTelemetryManager(MockLogger()), MockLogger())
-    
+
+    service = LLMService(
+        router=router,
+        model_registry=registry,
+        budget_manager=budget,
+        telemetry=InMemoryTelemetryManager(MockLogger()),
+        logger=MockLogger(),
+    )
+
     # First call will consume 30 tokens from DummyProvider
     response = asyncio.run(service.generate(messages=[]))
-    
-    # Should fail because 30 > 20
+
+    # Should fail because 30 > 20 (budget exceeded)
     assert response.finish_reason == FinishReason.ERROR

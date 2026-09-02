@@ -68,11 +68,16 @@ class AutonomousGoalPlanner(IGoalPlanner):
         plan = ExecutionPlan(goal_id=goal.id)
 
         for sg_id, subgoal in goal.graph.subgoals.items():
+            # Merge structured parameters from spec (via result_data) into arguments
+            args: dict = {"description": subgoal.description}
+            if subgoal.result_data and isinstance(subgoal.result_data, dict):
+                args.update(subgoal.result_data)
+
             step = ExecutionStep(
                 subgoal_id=sg_id,
                 action_name=subgoal.title.lower().replace(" ", "_"),
                 capability_requirement=subgoal.capability_requirement,
-                arguments={"description": subgoal.description},
+                arguments=args,
                 estimated_duration_sec=1.5,
             )
             plan.steps.append(step)
