@@ -45,6 +45,19 @@ class EricDesktopClient:
         self.goal_dashboard = GoalDashboardWidget()
 
         self.is_running: bool = False
+        self._visible: bool = True
+
+    def show(self) -> None:
+        """Show presentation surface (satisfies IPresentationHost)."""
+        self._visible = True
+
+    def hide(self) -> None:
+        """Hide presentation surface (satisfies IPresentationHost)."""
+        self._visible = False
+
+    def is_visible(self) -> bool:
+        """Check if presentation surface is visible."""
+        return self._visible
 
     async def launch(self) -> Dict[str, Any]:
         """Runs the full Application Shell Startup Lifecycle."""

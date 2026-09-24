@@ -11,15 +11,15 @@
 |---|---|
 | **Phase Hiện Tại** | Phase 1 — v1.0 RC1 Release Candidate |
 | **Sprint Đang Thực Hiện** | **Sprint 18 — Desktop Companion & System Integration** |
-| **Milestone Hoàn Thành** | **Sprint 18.2 — Client / Runtime Boundary & Structured Events** (`EricClient`, `BackendBridge` DI fix) |
-| **Sprint Tiếp Theo** | **Sprint 18.3 — Windows Companion Lifecycle (Single-Instance & System Tray)** |
+| **Milestone Hoàn Thành** | **Sprint 18.3 — Windows Companion Lifecycle** (`CompanionApplication`, Named Mutex, System Tray) |
+| **Sprint Tiếp Theo** | **Sprint 18.4 — Session Persistence & History Reconciliation** |
 | **Nhánh Git Chính** | `main` |
 | **Python Version** | 3.10+ / 3.14 (`.venv/`) |
-| **Bộ Test Suite** | **328 PASSED (45 test files)** (`pytest tests/ -v`) |
+| **Bộ Test Suite** | **342 PASSED (46 test files)** (`pytest tests/ -v`) |
 | **Test Coverage** | ~85% core coverage |
-| **Nợ Kỹ Thuật (Tech Debt)** | Đã loại bỏ hoàn toàn string progress parsing và duplicate LLMRouter instantiation |
+| **Nợ Kỹ Thuật (Tech Debt)** | 0 (Clean shutdown, atomic rollback, strict hide/quit separation) |
 | **Known Issues** | 0 |
-| **Security Status** | Hardened (EricClient không rò rỉ backend internals; router DI managed) |
+| **Security Status** | Hardened (Named Mutex, zero leaks, autostart disabled by default) |
 
 ---
 
