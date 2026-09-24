@@ -7,6 +7,9 @@ from core.runtime.client_interface import IEricRuntime
 from core.runtime.host import EricRuntimeHost
 from core.runtime.interfaces import IRuntime, IRuntimeCapability
 from core.runtime.models import (
+    GoalHandle,
+    GoalProgressRecord,
+    GoalSnapshot,
     RuntimeErrorInfo,
     RuntimeEvent,
     RuntimeSnapshot,
@@ -24,4 +27,7 @@ __all__ = [
     "RuntimeErrorInfo",
     "RuntimeEvent",
     "RuntimeSnapshot",
+    "GoalHandle",
+    "GoalSnapshot",
+    "GoalProgressRecord",
 ]

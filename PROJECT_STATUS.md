@@ -11,15 +11,15 @@
 |---|---|
 | **Phase Hiện Tại** | Phase 1 — v1.0 RC1 Release Candidate |
 | **Sprint Đang Thực Hiện** | **Sprint 18 — Desktop Companion & System Integration** |
-| **Milestone Hoàn Thành** | **Sprint 18.1 — Runtime Host Foundation** (`EricRuntimeHost`, `IEricRuntime`) |
-| **Sprint Tiếp Theo** | **Sprint 18.2 — Client / Runtime Boundary (`EricClient`)** |
+| **Milestone Hoàn Thành** | **Sprint 18.2 — Client / Runtime Boundary & Structured Events** (`EricClient`, `BackendBridge` DI fix) |
+| **Sprint Tiếp Theo** | **Sprint 18.3 — Windows Companion Lifecycle (Single-Instance & System Tray)** |
 | **Nhánh Git Chính** | `main` |
 | **Python Version** | 3.10+ / 3.14 (`.venv/`) |
-| **Bộ Test Suite** | **314 PASSED (44 test files)** (`pytest tests/ -v`) |
+| **Bộ Test Suite** | **328 PASSED (45 test files)** (`pytest tests/ -v`) |
 | **Test Coverage** | ~85% core coverage |
-| **Nợ Kỹ Thuật (Tech Debt)** | Sửa triệt để defect shutdown: `AppBootstrap.shutdown()` gọi `Kernel.shutdown()` qua `EricRuntimeHost` |
+| **Nợ Kỹ Thuật (Tech Debt)** | Đã loại bỏ hoàn toàn string progress parsing và duplicate LLMRouter instantiation |
 | **Known Issues** | 0 |
-| **Security Status** | Hardened (Bảo mật PyInstaller spec, runtime events không leak secrets/API keys) |
+| **Security Status** | Hardened (EricClient không rò rỉ backend internals; router DI managed) |
 
 ---
 

@@ -11,7 +11,13 @@ DI Container, EventBus, or live execution engine instances are exposed.
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Coroutine, Optional, Union
 
-from core.runtime.models import RuntimeEvent, RuntimeSnapshot, RuntimeStatus
+from core.runtime.models import (
+    GoalHandle,
+    GoalSnapshot,
+    RuntimeEvent,
+    RuntimeSnapshot,
+    RuntimeStatus,
+)
 
 # Listener signature: sync or async callable accepting a RuntimeEvent
 RuntimeEventListener = Callable[[RuntimeEvent], Union[None, Coroutine[Any, Any, None]]]
@@ -65,7 +71,7 @@ class IEricRuntime(ABC):
         Subscribe a listener to structured runtime events.
 
         Args:
-            event_type: Event type name (e.g. 'runtime.ready', 'runtime.error') or '*' for all.
+            event_type: Event type name (e.g. 'runtime.ready', 'goal.*') or '*' for all.
             handler: Callable accepting a RuntimeEvent (sync or coroutine).
         """
         pass
@@ -78,5 +84,69 @@ class IEricRuntime(ABC):
         Args:
             event_type: Event type name or '*'.
             handler: The previously subscribed callable.
+        """
+        pass
+
+    @abstractmethod
+    async def submit_goal(self, description: str, **kwargs) -> GoalHandle:
+        """
+        Submit a new goal for execution.
+
+        Returns a client-safe GoalHandle with the generated goal_id.
+        """
+        pass
+
+    @abstractmethod
+    async def start_goal(self, goal_id: str) -> Dict[str, Any]:
+        """
+        Execute an already submitted goal.
+
+        Transitions host status to BUSY during execution, then back to READY.
+        Returns a serializable result summary.
+        """
+        pass
+
+    @abstractmethod
+    async def execute_goal(self, description: str, **kwargs) -> Dict[str, Any]:
+        """
+        Create and execute a goal end-to-end.
+
+        Convenience wrapper around submit_goal + start_goal.
+        """
+        pass
+
+    @abstractmethod
+    async def pause_goal(self, goal_id: str) -> bool:
+        """
+        Pause an actively running goal.
+
+        Returns True if paused successfully, False otherwise.
+        """
+        pass
+
+    @abstractmethod
+    async def resume_goal(self, goal_id: str) -> bool:
+        """
+        Resume a previously paused goal.
+
+        Returns True if resumed and completed successfully, False otherwise.
+        """
+        pass
+
+    @abstractmethod
+    async def cancel_goal(self, goal_id: str) -> bool:
+        """
+        Cancel a running or queued goal.
+
+        Returns True if cancelled, False otherwise.
+        """
+        pass
+
+    @abstractmethod
+    def get_goal_snapshot(self, goal_id: str) -> Optional[GoalSnapshot]:
+        """
+        Get a client-safe snapshot of a goal's state.
+
+        Returns None if the goal is not found.
         """
         pass

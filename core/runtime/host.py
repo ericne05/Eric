@@ -7,7 +7,8 @@ Authoritative host managing the backend lifecycle of Eric:
 - Capability negotiation & runtime registration
 - Runtime readiness & health monitoring
 - Graceful shutdown & resource cleanup
-- Structured, safe runtime events
+- Structured, safe runtime and goal events
+- Goal execution commands & active goal tracking
 
 Follows the Single Composition Root principle established in Sprint 17.5:
 All services are resolved via Kernel DI; RuntimeHost coordinates, it does not rebuild.
@@ -23,6 +24,9 @@ from core.events.event import Event
 from core.events.event_bus import EventBus
 from core.runtime.client_interface import IEricRuntime, RuntimeEventListener
 from core.runtime.models import (
+    GoalHandle,
+    GoalProgressRecord,
+    GoalSnapshot,
     RuntimeErrorInfo,
     RuntimeEvent,
     RuntimeSnapshot,
@@ -106,17 +110,11 @@ class EricRuntimeHost(IEricRuntime):
             3. Emit 'runtime.starting'.
             4. Boot Kernel (or use provided Kernel).
             5. Resolve services from DI Container.
-            6. Start runtimes (Desktop, Vision).
-            7. Register runtimes with CapabilityNegotiator.
-            8. Transition status -> READY.
-            9. Emit 'runtime.ready'.
-
-        On failure:
-            - Transition status -> ERROR.
-            - Record structured RuntimeErrorInfo (safe, no secrets).
-            - Log full exception traceback.
-            - Emit 'runtime.error'.
-            - Re-raise exception.
+            6. Subscribe to EventBus goal events to bridge to client listeners.
+            7. Start runtimes (Desktop, Vision).
+            8. Register runtimes with CapabilityNegotiator.
+            9. Transition status -> READY.
+            10. Emit 'runtime.ready'.
         """
         async with self._lock:
             if self._status == RuntimeStatus.READY:
@@ -184,7 +182,11 @@ class EricRuntimeHost(IEricRuntime):
                         except Exception:
                             pass
 
-                # 4. Start runtimes asynchronously
+                # 4. Bridge goal events from Kernel EventBus to direct listeners
+                if self._event_bus and hasattr(self._event_bus, "subscribe"):
+                    self._event_bus.subscribe("goal.*", self._on_bus_goal_event)
+
+                # 5. Start runtimes asynchronously
                 active_runtimes = []
                 if self._desktop_runtime and hasattr(self._desktop_runtime, "start"):
                     res = self._desktop_runtime.start()
@@ -197,14 +199,14 @@ class EricRuntimeHost(IEricRuntime):
                         await res
                     active_runtimes.append("vision")
 
-                # 5. Register runtimes with CapabilityNegotiator
+                # 6. Register runtimes with CapabilityNegotiator
                 if self._negotiator and hasattr(self._negotiator, "register_runtime"):
                     if self._desktop_runtime:
                         self._negotiator.register_runtime("desktop", self._desktop_runtime)
                     if self._vision_runtime:
                         self._negotiator.register_runtime("vision", self._vision_runtime)
 
-                # 6. Finalize transition to READY
+                # 7. Finalize transition to READY
                 self._status = RuntimeStatus.READY
                 self._started_at = datetime.now(timezone.utc)
                 logger.info("[EricRuntimeHost] Runtime Host is READY.")
@@ -246,9 +248,9 @@ class EricRuntimeHost(IEricRuntime):
             2. Transition status -> STOPPING.
             3. Emit 'runtime.stopping'.
             4. Stop runtimes (Desktop, Vision).
-            5. Emit 'runtime.stopped' (prior to EventBus teardown).
-            6. Shutdown Kernel (cleans plugins, container, and EventBus).
-            7. Transition status -> STOPPED.
+            5. Transition status to STOPPED.
+            6. Emit 'runtime.stopped' (prior to EventBus teardown).
+            7. Shutdown Kernel (cleans plugins, container, and EventBus).
         """
         async with self._lock:
             if self._status == RuntimeStatus.STOPPED:
@@ -305,15 +307,168 @@ class EricRuntimeHost(IEricRuntime):
 
             logger.info("[EricRuntimeHost] Runtime Host is STOPPED.")
 
+    # ── Goal Command Implementations ────────────────────────────────────
+
+    async def submit_goal(self, description: str, **kwargs) -> GoalHandle:
+        """
+        Create a new goal in the GoalManager and return a client-safe handle.
+        """
+        if not self._goal_manager:
+            raise RuntimeError("GoalManager is not initialized or available in DI container")
+
+        goal = await self._goal_manager.create_goal(description, **kwargs)
+        state_str = goal.state.value if hasattr(goal.state, "value") else str(goal.state)
+        return GoalHandle(goal_id=goal.id, status=state_str)
+
+    async def start_goal(self, goal_id: str) -> Dict[str, Any]:
+        """
+        Execute an existing goal, transitioning status to BUSY during execution
+        and restoring READY upon completion/failure.
+        """
+        if not self._goal_manager:
+            raise RuntimeError("GoalManager is not initialized or available in DI container")
+
+        self._active_goal_id = goal_id
+        self._status = RuntimeStatus.BUSY
+
+        try:
+            res = await self._goal_manager.start_goal(goal_id)
+            is_success = getattr(res, "success", False)
+            summary = getattr(res, "summary", "") or ""
+            error = getattr(res, "error", None)
+
+            return {
+                "success": is_success,
+                "goal_id": goal_id,
+                "summary": summary,
+                "error": error,
+            }
+        except Exception as exc:
+            logger.error(f"[EricRuntimeHost] Goal execution error for '{goal_id}': {exc}", exc_info=True)
+            return {
+                "success": False,
+                "goal_id": goal_id,
+                "summary": "",
+                "error": str(exc),
+            }
+        finally:
+            self._active_goal_id = None
+            if self._status not in (RuntimeStatus.STOPPED, RuntimeStatus.STOPPING):
+                self._status = RuntimeStatus.READY
+
+    async def execute_goal(self, description: str, **kwargs) -> Dict[str, Any]:
+        """Convenience method to submit and immediately execute a goal."""
+        handle = await self.submit_goal(description, **kwargs)
+        return await self.start_goal(handle.goal_id)
+
+    async def pause_goal(self, goal_id: str) -> bool:
+        """Pause a running goal."""
+        if not self._goal_manager or not hasattr(self._goal_manager, "pause_goal"):
+            return False
+
+        ok = await self._goal_manager.pause_goal(goal_id)
+        if ok and self._active_goal_id == goal_id:
+            self._status = RuntimeStatus.READY
+        return bool(ok)
+
+    async def resume_goal(self, goal_id: str) -> bool:
+        """Resume a paused goal."""
+        if not self._goal_manager or not hasattr(self._goal_manager, "resume_goal"):
+            return False
+
+        self._active_goal_id = goal_id
+        self._status = RuntimeStatus.BUSY
+        try:
+            res = await self._goal_manager.resume_goal(goal_id)
+            return bool(getattr(res, "success", False))
+        finally:
+            self._active_goal_id = None
+            if self._status not in (RuntimeStatus.STOPPED, RuntimeStatus.STOPPING):
+                self._status = RuntimeStatus.READY
+
+    async def cancel_goal(self, goal_id: str) -> bool:
+        """Cancel a goal."""
+        if not self._goal_manager or not hasattr(self._goal_manager, "cancel_goal"):
+            return False
+
+        ok = await self._goal_manager.cancel_goal(goal_id)
+        if ok and self._active_goal_id == goal_id:
+            self._active_goal_id = None
+            self._status = RuntimeStatus.READY
+        return bool(ok)
+
+    def get_goal_snapshot(self, goal_id: str) -> Optional[GoalSnapshot]:
+        """Return a client-safe snapshot of a goal's current progress."""
+        if not self._goal_manager or not hasattr(self._goal_manager, "get_goal"):
+            return None
+
+        goal = self._goal_manager.get_goal(goal_id)
+        if not goal:
+            return None
+
+        progress_pct = 0.0
+        completed_steps = 0
+        total_steps = 0
+        current_step = None
+
+        if hasattr(goal, "progress") and goal.progress:
+            progress_pct = getattr(goal.progress, "percentage", 0.0)
+            completed_steps = getattr(goal.progress, "current_step_index", 0)
+            total_steps = getattr(goal.progress, "total_steps", 0)
+
+        if hasattr(goal, "plan") and goal.plan and hasattr(goal.plan, "steps"):
+            total_steps = len(goal.plan.steps)
+            for step in goal.plan.steps:
+                if getattr(step, "status", "") == "running":
+                    current_step = getattr(step, "action_name", "")
+                    break
+
+        state_val = goal.state.value if hasattr(goal.state, "value") else str(goal.state)
+        error_val = goal.result.error if (hasattr(goal, "result") and goal.result) else None
+
+        return GoalSnapshot(
+            goal_id=goal.id,
+            description=goal.spec.description if hasattr(goal, "spec") else "",
+            status=state_val,
+            progress=progress_pct,
+            current_step=current_step,
+            total_steps=total_steps,
+            completed_steps=completed_steps,
+            error=error_val,
+        )
+
     # ── Internal Event Dispatcher ──────────────────────────────────────
 
-    async def _emit_runtime_event(self, event_type: str, payload: Dict[str, Any]) -> RuntimeEvent:
+    def _on_bus_goal_event(self, bus_event: Any) -> None:
+        """
+        Handler bridging EventBus events to direct IEricRuntime subscribers.
+
+        Publishes with publish_to_bus=False to prevent infinite loopback.
+        """
+        payload = dict(bus_event.payload) if hasattr(bus_event, "payload") and isinstance(bus_event.payload, dict) else {}
+        event_name = getattr(bus_event, "name", "goal.event")
+
+        # Forward direct to runtime subscribers
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self._emit_runtime_event(event_name, payload, publish_to_bus=False))
+            if event_name == "goal.progress.updated":
+                loop.create_task(self._emit_runtime_event("goal.progress", payload, publish_to_bus=False))
+        except RuntimeError:
+            pass
+
+    async def _emit_runtime_event(
+        self,
+        event_type: str,
+        payload: Dict[str, Any],
+        publish_to_bus: bool = True,
+    ) -> RuntimeEvent:
         """
         Construct and dispatch a structured RuntimeEvent.
 
         Notifies:
             1. Direct client listeners subscribed via `subscribe()`.
-            2. The Kernel EventBus (if alive and available).
+            2. The Kernel EventBus (if alive, available, and publish_to_bus=True).
         """
         event = RuntimeEvent(
             event_type=event_type,
@@ -331,8 +486,8 @@ class EricRuntimeHost(IEricRuntime):
             except Exception as listener_exc:
                 logger.warning(f"[EricRuntimeHost] Event listener failed for '{event_type}': {listener_exc}")
 
-        # Publish to Kernel EventBus if available
-        if self._event_bus and hasattr(self._event_bus, "publish"):
+        # Publish to Kernel EventBus if requested
+        if publish_to_bus and self._event_bus and hasattr(self._event_bus, "publish"):
             try:
                 bus_event = Event.create(
                     name=event_type,

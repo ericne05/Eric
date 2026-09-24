@@ -143,3 +143,108 @@ class RuntimeSnapshot:
             active_goal_id=data.get("active_goal_id"),
             last_error=last_error,
         )
+
+
+@dataclass(frozen=True)
+class GoalHandle:
+    """
+    Client-safe handle representing an initiated or queued goal.
+
+    Contains no live domain/engine objects.
+    """
+    goal_id: str
+    status: str
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "goal_id": self.goal_id,
+            "status": self.status,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "GoalHandle":
+        return cls(
+            goal_id=data.get("goal_id", ""),
+            status=data.get("status", "unknown"),
+        )
+
+
+@dataclass(frozen=True)
+class GoalSnapshot:
+    """
+    Client-safe snapshot of a goal's current progress and execution state.
+
+    Contains no live domain/engine objects; completely JSON-serializable.
+    """
+    goal_id: str
+    description: str
+    status: str
+    progress: float = 0.0
+    current_step: Optional[str] = None
+    total_steps: int = 0
+    completed_steps: int = 0
+    error: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "goal_id": self.goal_id,
+            "description": self.description,
+            "status": self.status,
+            "progress": self.progress,
+            "current_step": self.current_step,
+            "total_steps": self.total_steps,
+            "completed_steps": self.completed_steps,
+            "error": self.error,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "GoalSnapshot":
+        return cls(
+            goal_id=data.get("goal_id", ""),
+            description=data.get("description", ""),
+            status=data.get("status", "unknown"),
+            progress=float(data.get("progress", 0.0)),
+            current_step=data.get("current_step"),
+            total_steps=int(data.get("total_steps", 0)),
+            completed_steps=int(data.get("completed_steps", 0)),
+            error=data.get("error"),
+        )
+
+
+@dataclass(frozen=True)
+class GoalProgressRecord:
+    """
+    Transport-safe progress update for telemetry and UI timelines.
+
+    Payloads never contain private chain-of-thought or raw internal reasoning.
+    """
+    goal_id: str
+    state: str
+    current_step: Optional[str] = None
+    completed_steps: int = 0
+    total_steps: int = 0
+    percentage: float = 0.0
+    message: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "goal_id": self.goal_id,
+            "state": self.state,
+            "current_step": self.current_step,
+            "completed_steps": self.completed_steps,
+            "total_steps": self.total_steps,
+            "percentage": self.percentage,
+            "message": self.message,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "GoalProgressRecord":
+        return cls(
+            goal_id=data.get("goal_id", ""),
+            state=data.get("state", "unknown"),
+            current_step=data.get("current_step"),
+            completed_steps=int(data.get("completed_steps", 0)),
+            total_steps=int(data.get("total_steps", 0)),
+            percentage=float(data.get("percentage", 0.0)),
+            message=data.get("message"),
+        )

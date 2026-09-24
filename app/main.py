@@ -31,7 +31,9 @@ class EricDesktopClient:
         self.session_manager = SessionManager()
         self.notification_center = NotificationCenter()
         self.bridge = BackendBridge(self.bootstrap, self.session_manager, self.notification_center)
-        self.viewmodel = MainViewModel(self.bridge)
+        from app.client.eric_client import EricClient
+        self.client = EricClient(runtime=self.bootstrap.runtime_host)
+        self.viewmodel = MainViewModel(self.bridge, client=self.client)
 
         # UI Components
         self.chat_widget = ChatWidget()

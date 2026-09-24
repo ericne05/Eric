@@ -59,7 +59,19 @@ class BackendBridge:
         self._bootstrap = bootstrap
         self._session_manager = session_manager or SessionManager()
         self._notification_center = notification_center
-        self._llm_router = llm_router or build_default_router()
+        # Sprint 18.2: Do NOT unconditionally construct duplicate router via build_default_router()
+        self._llm_router = llm_router
+        if self._llm_router is None and self._bootstrap:
+            kernel = getattr(self._bootstrap, "kernel", None)
+            if not kernel and hasattr(self._bootstrap, "runtime_host"):
+                kernel = getattr(self._bootstrap.runtime_host, "kernel", None)
+            if kernel and getattr(kernel, "container", None):
+                try:
+                    if kernel.container.has(LLMRouter):
+                        self._llm_router = kernel.container.resolve(LLMRouter)
+                except Exception:
+                    pass
+
         self._intent_classifier = IntentClassifier()
         self._goal_parser = GoalParser()
         self._status_listeners: List[Callable[[str], None]] = []
@@ -68,6 +80,35 @@ class BackendBridge:
 
         self.activity_logs: List[str] = []
         self.notifications: List[Dict[str, Any]] = []
+
+    def _get_llm_router(self) -> LLMRouter:
+        """Resolve authoritative LLMRouter from DI container; fallback only if container is absent."""
+        if self._llm_router is not None:
+            return self._llm_router
+
+        kernel = getattr(self._bootstrap, "kernel", None)
+        if not kernel and hasattr(self._bootstrap, "runtime_host"):
+            kernel = getattr(self._bootstrap.runtime_host, "kernel", None)
+
+        if kernel and getattr(kernel, "container", None):
+            try:
+                self._llm_router = kernel.container.resolve(LLMRouter)
+                return self._llm_router
+            except Exception as e:
+                logger.debug(f"[BackendBridge] Could not resolve LLMRouter from DI: {e}")
+
+        # Fallback only for detached unit tests without Kernel
+        self._llm_router = build_default_router()
+        return self._llm_router
+
+    def get_session_manager(self) -> SessionManager:
+        return self._session_manager
+
+    def get_active_session(self) -> Any:
+        return self._session_manager.get_active_session()
+
+    def list_sessions(self) -> List[Any]:
+        return self._session_manager.list_sessions()
 
     def set_notification_center(self, nc: Any) -> None:
         self._notification_center = nc
@@ -121,7 +162,7 @@ class BackendBridge:
         if intent_cls.intent != IntentType.AGENT:
             # Chat mode — LLM trả lời trực tiếp tự nhiên, không qua GoalSpec
             messages = PromptBuilder.build_chat_request(prompt, history)
-            llm_response = await self._llm_router.chat(messages, required_capability="chat")
+            llm_response = await self._get_llm_router().chat(messages, required_capability="chat")
             reply = llm_response.content or "Xin lỗi, tôi chưa thể trả lời yêu cầu này lúc này."
             msg = self._session_manager.add_message(reply, sender="eric", status="completed")
             self._conversation.add_assistant_message(reply)
@@ -131,7 +172,7 @@ class BackendBridge:
         # ── Bước 5: Agent mode — LLM sinh GoalSpecification JSON ──
         messages = PromptBuilder.build_agent_request(prompt, history)
         self._notify_status("Đang lập kế hoạch hành động...")
-        llm_response = await self._llm_router.chat(messages, required_capability="goal")
+        llm_response = await self._get_llm_router().chat(messages, required_capability="goal")
 
         raw_output = llm_response.content or ""
 
@@ -142,14 +183,14 @@ class BackendBridge:
         if spec is None:
             self._notify_status("Đang sửa lỗi cấu trúc...")
             repair_messages = PromptBuilder.build_repair_request(raw_output, "JSON không hợp lệ hoặc thiếu 'intent'")
-            repair_response = await self._llm_router.chat(repair_messages, required_capability="goal")
+            repair_response = await self._get_llm_router().chat(repair_messages, required_capability="goal")
             spec = self._goal_parser.parse(repair_response.content or "", original_input=prompt)
 
         # Nếu vẫn thất bại hoặc LLM trả plain text
         if spec is None or not spec.is_valid():
             # Chuyển sang trả lời Chat tự nhiên bằng LLM thay vì báo lỗi mẫu
             messages = PromptBuilder.build_chat_request(prompt, history)
-            llm_chat = await self._llm_router.chat(messages, required_capability="chat")
+            llm_chat = await self._get_llm_router().chat(messages, required_capability="chat")
             reply = llm_chat.content or f"Tôi đã nhận được yêu cầu '{prompt}'."
             msg = self._session_manager.add_message(reply, sender="eric", status="completed")
             self._conversation.add_assistant_message(reply)
@@ -213,7 +254,7 @@ class BackendBridge:
         """Dùng LLM để tổng hợp kết quả thực thi thành câu trả lời tự nhiên Tiếng Việt."""
         try:
             messages = PromptBuilder.build_response_synthesis(user_input, result.to_summary())
-            llm_response = await self._llm_router.chat(messages, required_capability="chat")
+            llm_response = await self._get_llm_router().chat(messages, required_capability="chat")
             if llm_response.content and not llm_response.content.strip().startswith("{"):
                 return llm_response.content
         except Exception as e:
