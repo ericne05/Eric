@@ -122,6 +122,9 @@ class Kernel:
         Container.dispose() handles lifecycle cleanup for all registered
         singleton services that implement ILifecycleAware.
         """
+        if self._state == SystemState.STOPPED:
+            return
+
         self._set_state(SystemState.SHUTTING_DOWN)
         self._log("[Kernel] Shutdown sequence started...")
 

@@ -10,15 +10,16 @@
 | Tiêu chí | Trạng thái Hiện tại |
 |---|---|
 | **Phase Hiện Tại** | Phase 1 — v1.0 RC1 Release Candidate |
-| **Sprint Đã Hoàn Thành** | **Sprint 17.5 — Reconciliation & Hardening** |
-| **Sprint Tiếp Theo** | **Sprint 18 — Desktop Companion & System Integration** |
-| **Nhánh Git Chính** | `main` (Synced with `develop` at commit `dd78fd9`) |
+| **Sprint Đang Thực Hiện** | **Sprint 18 — Desktop Companion & System Integration** |
+| **Milestone Hoàn Thành** | **Sprint 18.1 — Runtime Host Foundation** (`EricRuntimeHost`, `IEricRuntime`) |
+| **Sprint Tiếp Theo** | **Sprint 18.2 — Client / Runtime Boundary (`EricClient`)** |
+| **Nhánh Git Chính** | `main` |
 | **Python Version** | 3.10+ / 3.14 (`.venv/`) |
-| **Bộ Test Suite** | **368+ PASSED (41 test files)** (`pytest tests/ -v`) |
+| **Bộ Test Suite** | **314 PASSED (44 test files)** (`pytest tests/ -v`) |
 | **Test Coverage** | ~85% core coverage |
-| **Nợ Kỹ Thuật (Tech Debt)** | Đã giải quyết trong Sprint 17.5 (Loại bỏ .env khỏi PyInstaller, loại bỏ shell=True, tích hợp AppBootstrap với Kernel) |
+| **Nợ Kỹ Thuật (Tech Debt)** | Sửa triệt để defect shutdown: `AppBootstrap.shutdown()` gọi `Kernel.shutdown()` qua `EricRuntimeHost` |
 | **Known Issues** | 0 |
-| **Security Status** | Hardened (Bảo mật PyInstaller spec, an toàn ứng dụng subprocess execution) |
+| **Security Status** | Hardened (Bảo mật PyInstaller spec, runtime events không leak secrets/API keys) |
 
 ---
 
