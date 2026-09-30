@@ -11,15 +11,15 @@
 |---|---|
 | **Phase Hiện Tại** | Phase 1 — v1.0 RC1 Release Candidate |
 | **Sprint Đang Thực Hiện** | **Sprint 18 — Desktop Companion & System Integration** |
-| **Milestone Hoàn Thành** | **Sprint 18.3 — Windows Companion Lifecycle** (`CompanionApplication`, Named Mutex, System Tray) |
-| **Sprint Tiếp Theo** | **Sprint 18.4 — Session Persistence & History Reconciliation** |
+| **Milestone Hoàn Thành** | **Sprint 18.4 — Session Persistence & State Restoration** (SQLite sessions.db, legacy JSON migration, goal state normalization) |
+| **Sprint Tiếp Theo** | **Sprint 18.5** (TBD) |
 | **Nhánh Git Chính** | `main` |
 | **Python Version** | 3.10+ / 3.14 (`.venv/`) |
-| **Bộ Test Suite** | **342 PASSED (46 test files)** (`pytest tests/ -v`) |
-| **Test Coverage** | ~85% core coverage |
-| **Nợ Kỹ Thuật (Tech Debt)** | 0 (Clean shutdown, atomic rollback, strict hide/quit separation) |
-| **Known Issues** | 0 |
-| **Security Status** | Hardened (Named Mutex, zero leaks, autostart disabled by default) |
+| **Bộ Test Suite** | **371 PASSED, 2 FAILED pre-existing (47 test files)** (`pytest tests/ -v`) |
+| **Test Coverage** | ~86% core coverage |
+| **Nợ Kỹ Thuật (Tech Debt)** | 0 (Clean shutdown, atomic rollback, strict hide/quit separation, durable persistence) |
+| **Known Issues** | 2 pre-existing Playwright/browser test failures (unrelated to session persistence) |
+| **Security Status** | Hardened (Named Mutex, zero leaks, autostart disabled by default, sessions.db in LOCALAPPDATA) |
 
 ---
 
@@ -44,6 +44,10 @@
 - [x] **Sprint 16 — Cognitive Coordination Layer**
 - [x] **Sprint 17 — Desktop Client App Shell & Session UI**
 - [x] **Sprint 17.5 — Reconciliation & Hardening (Current)**
+- [x] **Sprint 18.1 — Runtime Host Foundation** (`EricRuntimeHost`, `IEricRuntime`)
+- [x] **Sprint 18.2 — Client / Runtime Boundary** (`EricClient`, structured goal events)
+- [x] **Sprint 18.3 — Windows Companion Lifecycle** (`CompanionApplication`, Named Mutex, System Tray)
+- [x] **Sprint 18.4 — Session Persistence & State Restoration** (SQLite, legacy JSON migration, goal state)
 
 ---
 

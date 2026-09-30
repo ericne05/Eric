@@ -40,6 +40,7 @@ a = Analysis(
         'app.client',
         'app.platform',
         'app.lifecycle',
+        'app.persistence',
         'pystray',
     ],
     hookspath=[],

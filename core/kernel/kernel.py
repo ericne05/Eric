@@ -164,6 +164,8 @@ class Kernel:
         AgentSystemModule().register(self._container)
         from core.runtime.module import RuntimeModule
         RuntimeModule().register(self._container)
+        from app.persistence.module import SessionPersistenceModule
+        SessionPersistenceModule().register(self._container)
 
         self._log("[Kernel] DI Container initialized.")
 
