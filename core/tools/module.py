@@ -29,9 +29,12 @@ class ToolSystemModule(IDependencyModule):
         container.add_singleton(IToolRegistry, ToolRegistry)
         
         def _executor_factory(c):
+            from core.approval.interfaces import IApprovalManager
+            approval_mgr = c.resolve(IApprovalManager) if c.has(IApprovalManager) else None
             return ToolExecutor(
                 registry=c.resolve(IToolRegistry),
                 policy_engine=c.resolve(IPolicyEngine),
-                telemetry=c.resolve(ITelemetryManager)
+                telemetry=c.resolve(ITelemetryManager),
+                approval_manager=approval_mgr,
             )
         container.add_singleton(IToolExecutor, _executor_factory)

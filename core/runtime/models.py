@@ -248,3 +248,8 @@ class GoalProgressRecord:
             percentage=float(data.get("percentage", 0.0)),
             message=data.get("message"),
         )
+
+
+# Human-in-the-Loop Approval Models (Sprint 18.5)
+from core.approval.enums import ApprovalRiskLevel, ApprovalStatus
+from core.approval.models import ApprovalEvaluation, ApprovalRequest

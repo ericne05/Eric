@@ -43,6 +43,10 @@ class ToolSchema:
     # Input parameters
     parameters: list[ToolParameter] = field(default_factory=list)
     
+    # Human-in-the-loop approval metadata (Sprint 18.5)
+    requires_approval: bool = False
+    risk_level: str = "normal"
+
     @property
     def fqn(self) -> str:
         """Fully Qualified Name."""

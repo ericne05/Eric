@@ -18,6 +18,7 @@ a = Analysis(
         'httpx',
         'requests',
         'core',
+        'core.approval',
         'core.cognition',
         'core.goals',
         'core.knowledge',

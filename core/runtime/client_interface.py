@@ -9,9 +9,10 @@ DI Container, EventBus, or live execution engine instances are exposed.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Coroutine, Optional, Union
+from typing import Any, Callable, Coroutine, List, Optional, Union
 
 from core.runtime.models import (
+    ApprovalRequest,
     GoalHandle,
     GoalSnapshot,
     RuntimeEvent,
@@ -148,5 +149,36 @@ class IEricRuntime(ABC):
         Get a client-safe snapshot of a goal's state.
 
         Returns None if the goal is not found.
+        """
+        pass
+
+    # ── Human-in-the-Loop Approval Operations (Sprint 18.5) ─────────────
+
+    @abstractmethod
+    def get_pending_approvals(self) -> List[ApprovalRequest]:
+        """
+        Return all approval requests currently awaiting user decision.
+        """
+        pass
+
+    @abstractmethod
+    async def approve(self, request_id: str) -> bool:
+        """
+        Approve a pending action request by its unique request_id.
+
+        Returns True if transitioned from PENDING to APPROVED.
+        Returns False if request was not pending (already decided).
+        Raises KeyError if request_id does not exist.
+        """
+        pass
+
+    @abstractmethod
+    async def deny(self, request_id: str) -> bool:
+        """
+        Deny a pending action request by its unique request_id.
+
+        Returns True if transitioned from PENDING to DENIED.
+        Returns False if request was not pending (already decided).
+        Raises KeyError if request_id does not exist.
         """
         pass

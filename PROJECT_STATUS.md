@@ -11,15 +11,15 @@
 |---|---|
 | **Phase Hiện Tại** | Phase 1 — v1.0 RC1 Release Candidate |
 | **Sprint Đang Thực Hiện** | **Sprint 18 — Desktop Companion & System Integration** |
-| **Milestone Hoàn Thành** | **Sprint 18.4 — Session Persistence & State Restoration** (SQLite sessions.db, legacy JSON migration, goal state normalization) |
-| **Sprint Tiếp Theo** | **Sprint 18.5** (TBD) |
+| **Milestone Hoàn Thành** | **Sprint 18.5 — Human-in-the-Loop Action Approval** (`ApprovalManager`, `DefaultApprovalPolicy`, Tool & Goal enforcement gates) |
+| **Sprint Tiếp Theo** | **Sprint 18.6** (TBD) |
 | **Nhánh Git Chính** | `main` |
 | **Python Version** | 3.10+ / 3.14 (`.venv/`) |
-| **Bộ Test Suite** | **371 PASSED, 2 FAILED pre-existing (47 test files)** (`pytest tests/ -v`) |
+| **Bộ Test Suite** | **394 PASSED, 2 FAILED pre-existing (48 test files)** (`pytest tests/ -v`) |
 | **Test Coverage** | ~86% core coverage |
-| **Nợ Kỹ Thuật (Tech Debt)** | 0 (Clean shutdown, atomic rollback, strict hide/quit separation, durable persistence) |
-| **Known Issues** | 2 pre-existing Playwright/browser test failures (unrelated to session persistence) |
-| **Security Status** | Hardened (Named Mutex, zero leaks, autostart disabled by default, sessions.db in LOCALAPPDATA) |
+| **Nợ Kỹ Thuật (Tech Debt)** | 0 (Clean shutdown, atomic rollback, strict boundary, runtime safety gate) |
+| **Known Issues** | 2 pre-existing Playwright/browser test failures (unrelated to approval subsystem) |
+| **Security Status** | Hardened (Named Mutex, zero leaks, Human-in-the-Loop approval for consequential actions) |
 
 ---
 
@@ -48,6 +48,7 @@
 - [x] **Sprint 18.2 — Client / Runtime Boundary** (`EricClient`, structured goal events)
 - [x] **Sprint 18.3 — Windows Companion Lifecycle** (`CompanionApplication`, Named Mutex, System Tray)
 - [x] **Sprint 18.4 — Session Persistence & State Restoration** (SQLite, legacy JSON migration, goal state)
+- [x] **Sprint 18.5 — Human-in-the-Loop Action Approval** (`ApprovalManager`, ToolExecutor & GoalOrchestrator gates)
 
 ---
 

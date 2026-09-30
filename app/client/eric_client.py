@@ -9,10 +9,11 @@ Designed to be transport-agnostic: the Desktop UI or CLI can switch from in-proc
 calls to local IPC (Named Pipes, Sockets, MCP) without any UI changes.
 """
 
-from typing import Any, Callable, Coroutine, Dict, Optional, Union
+from typing import Any, Callable, Coroutine, Dict, List, Optional, Union
 
 from core.runtime.client_interface import IEricRuntime, RuntimeEventListener
 from core.runtime.models import (
+    ApprovalRequest,
     GoalHandle,
     GoalSnapshot,
     RuntimeEvent,
@@ -144,3 +145,31 @@ class EricClient:
             handler: The previously subscribed callable.
         """
         self._runtime.unsubscribe(event_type, handler)
+
+    # ── Human-in-the-Loop Approval Operations (Sprint 18.5) ─────────────
+
+    def get_pending_approvals(self) -> List[ApprovalRequest]:
+        """
+        Get all transport-safe approval requests currently awaiting user decision.
+        """
+        return self._runtime.get_pending_approvals()
+
+    async def approve(self, request_id: str) -> bool:
+        """
+        Approve a pending action request by its unique request_id.
+
+        Returns True if transitioned from PENDING to APPROVED.
+        Returns False if request was not pending (already decided).
+        Raises KeyError if request_id does not exist.
+        """
+        return await self._runtime.approve(request_id)
+
+    async def deny(self, request_id: str) -> bool:
+        """
+        Deny a pending action request by its unique request_id.
+
+        Returns True if transitioned from PENDING to DENIED.
+        Returns False if request was not pending (already decided).
+        Raises KeyError if request_id does not exist.
+        """
+        return await self._runtime.deny(request_id)

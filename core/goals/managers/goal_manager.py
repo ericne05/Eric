@@ -36,14 +36,20 @@ class GoalManager(IGoalManager):
     NEVER executes low-level actions directly.
     """
 
-    def __init__(self, negotiator: CapabilityNegotiator, event_bus: Optional[EventBus] = None):
+    def __init__(
+        self,
+        negotiator: CapabilityNegotiator,
+        event_bus: Optional[EventBus] = None,
+        approval_manager: Optional[Any] = None,
+    ):
         self._negotiator = negotiator
         self._event_bus = event_bus
+        self._approval_manager = approval_manager
         self._planner = AutonomousGoalPlanner()
         self._replanner = DynamicReplanner()
         self._estimator = GoalCostEstimator()
         self._validator = GoalValidator()
-        self._orchestrator = GoalOrchestrator(negotiator)
+        self._orchestrator = GoalOrchestrator(negotiator, approval_manager=approval_manager)
         self._progress_tracker = ProgressTracker(event_bus)
         self._context = ExecutionContext()
         self._recovery_manager = GoalRecoveryManager()

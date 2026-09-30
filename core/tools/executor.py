@@ -23,10 +23,17 @@ class ToolExecutor(IToolExecutor):
     Handles permissions, timeout, retry, policy, and event tracking.
     """
 
-    def __init__(self, registry: IToolRegistry, policy_engine: IPolicyEngine, telemetry: ITelemetryManager):
+    def __init__(
+        self,
+        registry: IToolRegistry,
+        policy_engine: IPolicyEngine,
+        telemetry: ITelemetryManager,
+        approval_manager: Any = None,
+    ):
         self._registry = registry
         self._policy = policy_engine
         self._telemetry = telemetry
+        self._approval_manager = approval_manager
 
     async def execute_tool(self, context: "ExecutionContext", fqn: str, cancellation_token: "CancellationToken | None" = None, **kwargs) -> ToolResult:
         self._telemetry.record_event("tool_execution_started", {"fqn": fqn, "trace_id": context.task.trace_id})
@@ -48,6 +55,36 @@ class ToolExecutor(IToolExecutor):
             context.logger.warning(f"[ToolExecutor] Policy denied tool '{fqn}': {policy_result.reason}")
             self._telemetry.record_event("tool_execution_denied", {"fqn": fqn, "reason": policy_result.reason})
             return ToolResult(status=ToolStatus.ERROR, error_message=f"Policy Denied: {policy_result.reason}")
+
+        # Human-in-the-Loop Approval Gate (Sprint 18.5)
+        if self._approval_manager:
+            from core.approval.enums import ApprovalStatus
+            metadata = {
+                "tool": tool,
+                "requires_approval": getattr(tool.schema, "requires_approval", False),
+                "risk_level": getattr(tool.schema, "risk_level", "normal"),
+                "category": getattr(tool.schema, "category", "general"),
+                "permissions": getattr(tool.schema, "permissions", []),
+                "description": getattr(tool.schema, "description", ""),
+            }
+            eval_res = self._approval_manager.evaluate_action(fqn, parameters=kwargs, metadata=metadata)
+            if eval_res.requires_approval or policy_result.decision == PolicyDecision.ASK_USER:
+                reason = eval_res.reason or policy_result.reason or f"Action '{fqn}' requires human approval."
+                context.logger.info(f"[ToolExecutor] Action '{fqn}' requires approval: {reason}")
+                decision = await self._approval_manager.request_and_wait(
+                    action_name=fqn,
+                    description=getattr(tool.schema, "description", f"Execute tool {fqn}"),
+                    reason=reason,
+                    risk_level=eval_res.risk_level,
+                    parameters=kwargs,
+                )
+                if decision != ApprovalStatus.APPROVED:
+                    context.logger.warning(f"[ToolExecutor] Tool '{fqn}' was {decision.value} by approval gate.")
+                    self._telemetry.record_event("tool_execution_denied", {"fqn": fqn, "reason": f"Approval {decision.value}"})
+                    return ToolResult(
+                        status=ToolStatus.PERMISSION_DENIED,
+                        error_message=f"Action '{fqn}' was {decision.value} by user approval.",
+                    )
 
         timeout = tool.schema.timeout_seconds
         

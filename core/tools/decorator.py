@@ -83,6 +83,8 @@ def tool(
     timeout_seconds: int = 30,
     author: str = "Eric Team",
     permissions: list[ToolPermission] | None = None,
+    requires_approval: bool = False,
+    risk_level: str = "normal",
 ):
     """
     Decorator to convert a Python function to an ITool.
@@ -125,7 +127,9 @@ def tool(
             timeout_seconds=timeout_seconds,
             author=author,
             permissions=permissions or [],
-            parameters=parameters
+            parameters=parameters,
+            requires_approval=requires_approval,
+            risk_level=risk_level,
         )
         
         return DecoratedTool(schema, func)

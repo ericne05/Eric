@@ -7,6 +7,10 @@ from core.runtime.client_interface import IEricRuntime
 from core.runtime.host import EricRuntimeHost
 from core.runtime.interfaces import IRuntime, IRuntimeCapability
 from core.runtime.models import (
+    ApprovalEvaluation,
+    ApprovalRequest,
+    ApprovalRiskLevel,
+    ApprovalStatus,
     GoalHandle,
     GoalProgressRecord,
     GoalSnapshot,
@@ -30,4 +34,8 @@ __all__ = [
     "GoalHandle",
     "GoalSnapshot",
     "GoalProgressRecord",
+    "ApprovalRequest",
+    "ApprovalStatus",
+    "ApprovalRiskLevel",
+    "ApprovalEvaluation",
 ]

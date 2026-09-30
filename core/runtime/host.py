@@ -24,6 +24,7 @@ from core.events.event import Event
 from core.events.event_bus import EventBus
 from core.runtime.client_interface import IEricRuntime, RuntimeEventListener
 from core.runtime.models import (
+    ApprovalRequest,
     GoalHandle,
     GoalProgressRecord,
     GoalSnapshot,
@@ -65,6 +66,7 @@ class EricRuntimeHost(IEricRuntime):
         self._vision_runtime: Optional[Any] = None
         self._goal_manager: Optional[Any] = None
         self._coordinator: Optional[Any] = None
+        self._approval_manager: Optional[Any] = None
 
         # Direct event listeners (event_type -> list of handlers)
         self._listeners: Dict[str, List[RuntimeEventListener]] = {}
@@ -181,10 +183,22 @@ class EricRuntimeHost(IEricRuntime):
                             self._coordinator = container.resolve(CognitiveCoordinator)
                         except Exception:
                             pass
+                        try:
+                            from core.approval.interfaces import IApprovalManager
+                            if container.has(IApprovalManager):
+                                self._approval_manager = container.resolve(IApprovalManager)
+                        except Exception:
+                            pass
 
-                # 4. Bridge goal events from Kernel EventBus to direct listeners
+                # Fallback approval manager if container was not booted with one
+                if self._approval_manager is None:
+                    from core.approval.manager import ApprovalManager
+                    self._approval_manager = ApprovalManager(event_bus=self._event_bus)
+
+                # 4. Bridge goal and approval events from Kernel EventBus to direct listeners
                 if self._event_bus and hasattr(self._event_bus, "subscribe"):
                     self._event_bus.subscribe("goal.*", self._on_bus_goal_event)
+                    self._event_bus.subscribe("approval.*", self._on_bus_approval_event)
 
                 # 5. Start runtimes asynchronously
                 active_runtimes = []
@@ -262,6 +276,15 @@ class EricRuntimeHost(IEricRuntime):
 
             # Emit stopping event
             await self._emit_runtime_event("runtime.stopping", {})
+
+            # 0. Cancel all pending approvals to release any waiting execution tasks
+            if self._approval_manager and hasattr(self._approval_manager, "cancel_all_pending"):
+                try:
+                    cancelled = self._approval_manager.cancel_all_pending()
+                    if cancelled:
+                        logger.info(f"[EricRuntimeHost] Cancelled {cancelled} pending approval(s) on stop")
+                except Exception as e:
+                    logger.warning(f"[EricRuntimeHost] Error cancelling pending approvals: {e}")
 
             # 1. Stop runtimes
             if self._desktop_runtime:
@@ -437,6 +460,30 @@ class EricRuntimeHost(IEricRuntime):
             error=error_val,
         )
 
+    # ── Human-in-the-Loop Approval Operations (Sprint 18.5) ─────────────
+
+    def get_pending_approvals(self) -> List[ApprovalRequest]:
+        """Return all approval requests currently awaiting user decision."""
+        if not self._approval_manager or not hasattr(self._approval_manager, "get_pending_requests"):
+            return []
+        return self._approval_manager.get_pending_requests()
+
+    async def approve(self, request_id: str) -> bool:
+        """
+        Approve a pending action request by its unique request_id.
+        """
+        if not self._approval_manager or not hasattr(self._approval_manager, "approve"):
+            raise RuntimeError("ApprovalManager is not available in RuntimeHost")
+        return await self._approval_manager.approve(request_id)
+
+    async def deny(self, request_id: str) -> bool:
+        """
+        Deny a pending action request by its unique request_id.
+        """
+        if not self._approval_manager or not hasattr(self._approval_manager, "deny"):
+            raise RuntimeError("ApprovalManager is not available in RuntimeHost")
+        return await self._approval_manager.deny(request_id)
+
     # ── Internal Event Dispatcher ──────────────────────────────────────
 
     def _on_bus_goal_event(self, bus_event: Any) -> None:
@@ -454,6 +501,19 @@ class EricRuntimeHost(IEricRuntime):
             loop.create_task(self._emit_runtime_event(event_name, payload, publish_to_bus=False))
             if event_name == "goal.progress.updated":
                 loop.create_task(self._emit_runtime_event("goal.progress", payload, publish_to_bus=False))
+        except RuntimeError:
+            pass
+
+    def _on_bus_approval_event(self, bus_event: Any) -> None:
+        """
+        Handler bridging EventBus approval events to direct IEricRuntime subscribers.
+        """
+        payload = dict(bus_event.payload) if hasattr(bus_event, "payload") and isinstance(bus_event.payload, dict) else {}
+        event_name = getattr(bus_event, "name", "approval.event")
+
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self._emit_runtime_event(event_name, payload, publish_to_bus=False))
         except RuntimeError:
             pass
 
@@ -529,3 +589,7 @@ class EricRuntimeHost(IEricRuntime):
     @property
     def coordinator(self) -> Optional[Any]:
         return self._coordinator
+
+    @property
+    def approval_manager(self) -> Optional[Any]:
+        return self._approval_manager

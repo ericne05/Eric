@@ -157,6 +157,8 @@ class Kernel:
         EventBusModule().register(self._container)
         MemoryModule().register(self._container)
         PluginSystemModule().register(self._container)
+        from core.approval.module import ApprovalModule
+        ApprovalModule().register(self._container)
         from core.tools.module import ToolSystemModule
         ToolSystemModule().register(self._container)
         from core.llm.module import LLMSystemModule

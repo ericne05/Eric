@@ -16,10 +16,41 @@ class GoalOrchestrator:
     Uses CapabilityRequirement (required -> preferred -> optional) for graceful runtime fallback.
     """
 
-    def __init__(self, negotiator: CapabilityNegotiator):
+    def __init__(self, negotiator: CapabilityNegotiator, approval_manager: Optional[Any] = None):
         self._negotiator = negotiator
+        self._approval_manager = approval_manager
 
     async def execute_step(self, step: ExecutionStep) -> Dict[str, Any]:
+        # Human-in-the-Loop Approval Gate (Sprint 18.5)
+        if self._approval_manager:
+            from core.approval.enums import ApprovalStatus
+            metadata = {
+                "step_id": getattr(step, "id", None),
+                "subgoal_id": getattr(step, "subgoal_id", None),
+                "capability_requirement": getattr(step, "capability_requirement", None),
+                "policy": getattr(step, "policy", None),
+            }
+            eval_res = self._approval_manager.evaluate_action(
+                action_name=step.action_name,
+                parameters=step.arguments,
+                metadata=metadata,
+            )
+            if eval_res.requires_approval:
+                decision = await self._approval_manager.request_and_wait(
+                    action_name=step.action_name,
+                    description=f"Execute step '{step.action_name}'",
+                    reason=eval_res.reason or f"Action '{step.action_name}' requires user approval.",
+                    risk_level=eval_res.risk_level,
+                    parameters=step.arguments,
+                )
+                if decision != ApprovalStatus.APPROVED:
+                    return {
+                        "success": False,
+                        "error": f"Step '{step.action_name}' was {decision.value} by user approval.",
+                        "runtime_used": "none",
+                        "denied": True,
+                    }
+
         req = step.capability_requirement
 
         # Extract capabilities to try in sequence: required -> preferred -> optional

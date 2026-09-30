@@ -69,11 +69,14 @@ class RuntimeModule(IDependencyModule):
         from core.vision.interfaces import IVisionRuntime
         container.add_singleton(IVisionRuntime, _vision_factory)
 
-        # GoalManager — needs CapabilityNegotiator + EventBus
+        # GoalManager — needs CapabilityNegotiator + EventBus (+ optional ApprovalManager)
         def _goal_manager_factory(c):
+            from core.approval.interfaces import IApprovalManager
+            approval_mgr = c.resolve(IApprovalManager) if c.has(IApprovalManager) else None
             return GoalManager(
                 negotiator=c.resolve(CapabilityNegotiator),
                 event_bus=c.resolve(EventBus),
+                approval_manager=approval_mgr,
             )
 
         container.add_singleton(GoalManager, _goal_manager_factory)
